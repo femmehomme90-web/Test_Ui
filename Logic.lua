@@ -4,7 +4,7 @@
 print("[LOGIC] Démarrage du chargement de la logique...")
 
 -- Charger l'UI (remplace le chemin par ton vrai chemin ou utilise loadstring)
-loadstring(game:HttpGet('loadstring(game:HttpGet('https://raw.githubusercontent.com/femmehomme90-web/Test_Ui/refs/heads/main/Ui.lua')'))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/femmehomme90-web/Test_Ui/refs/heads/main/Ui.lua"))()
 
 print("[LOGIC] UI chargé avec succès")
 
