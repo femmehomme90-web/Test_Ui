@@ -1,15 +1,22 @@
 -- Logic.lua - Ta logique de script
 -- À charger APRÈS UI.lua
 
+print("[LOGIC] Démarrage du chargement de la logique...")
+
 -- Charger l'UI (remplace le chemin par ton vrai chemin ou utilise loadstring)
-local UI = loadfile("UI.lua")() -- ou utilise ton système de chargement Codex
+loadstring(game:HttpGet('https://raw.githubusercontent.com/femmehomme90-web/Test_Ui/refs/heads/main/Ui.lua'))()
+
+print("[LOGIC] UI chargé avec succès")
+
+-- Marquer que la logique est chargée
+_G.LogicLoaded = true
 
 -- ====================================
 -- PAGE 1 - CONFIGURATION
 -- ====================================
 
 UI.Callbacks.Page1.Button1 = function()
-    print("Page 1 - Bouton 1 activé !")
+    print("[LOGIC] Page 1 - Bouton 1 activé !")
     -- Ta logique ici
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Button 1",
@@ -19,17 +26,17 @@ UI.Callbacks.Page1.Button1 = function()
 end
 
 UI.Callbacks.Page1.Button2 = function()
-    print("Page 1 - Bouton 2 activé !")
+    print("[LOGIC] Page 1 - Bouton 2 activé !")
     -- Ta logique ici
 end
 
 UI.Callbacks.Page1.Button3 = function()
-    print("Page 1 - Bouton 3 activé !")
+    print("[LOGIC] Page 1 - Bouton 3 activé !")
     -- Ta logique ici
 end
 
 UI.Callbacks.Page1.Slider = function(value)
-    print("Page 1 - Slider valeur: " .. value)
+    print("[LOGIC] Page 1 - Slider valeur: " .. value)
     -- Ta logique avec la valeur du slider
     -- Exemple: modifier la vitesse du joueur
     -- game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 16 + value
@@ -40,22 +47,22 @@ end
 -- ====================================
 
 UI.Callbacks.Page2.Button1 = function()
-    print("Page 2 - Bouton 1 activé !")
+    print("[LOGIC] Page 2 - Bouton 1 activé !")
     -- Ta logique ici
 end
 
 UI.Callbacks.Page2.Button2 = function()
-    print("Page 2 - Bouton 2 activé !")
+    print("[LOGIC] Page 2 - Bouton 2 activé !")
     -- Ta logique ici
 end
 
 UI.Callbacks.Page2.Button3 = function()
-    print("Page 2 - Bouton 3 activé !")
+    print("[LOGIC] Page 2 - Bouton 3 activé !")
     -- Ta logique ici
 end
 
 UI.Callbacks.Page2.Slider = function(value)
-    print("Page 2 - Slider valeur: " .. value)
+    print("[LOGIC] Page 2 - Slider valeur: " .. value)
     -- Ta logique ici
 end
 
@@ -64,22 +71,22 @@ end
 -- ====================================
 
 UI.Callbacks.Page3.Button1 = function()
-    print("Page 3 - Bouton 1 activé !")
+    print("[LOGIC] Page 3 - Bouton 1 activé !")
     -- Ta logique ici
 end
 
 UI.Callbacks.Page3.Button2 = function()
-    print("Page 3 - Bouton 2 activé !")
+    print("[LOGIC] Page 3 - Bouton 2 activé !")
     -- Ta logique ici
 end
 
 UI.Callbacks.Page3.Button3 = function()
-    print("Page 3 - Bouton 3 activé !")
+    print("[LOGIC] Page 3 - Bouton 3 activé !")
     -- Ta logique ici
 end
 
 UI.Callbacks.Page3.Slider = function(value)
-    print("Page 3 - Slider valeur: " .. value)
+    print("[LOGIC] Page 3 - Slider valeur: " .. value)
     -- Ta logique ici
 end
 
@@ -88,26 +95,30 @@ end
 -- ====================================
 
 UI.Callbacks.Page4.Button1 = function()
-    print("Page 4 - Bouton 1 activé !")
+    print("[LOGIC] Page 4 - Bouton 1 activé !")
     -- Ta logique ici
 end
 
 UI.Callbacks.Page4.Button2 = function()
-    print("Page 4 - Bouton 2 activé !")
+    print("[LOGIC] Page 4 - Bouton 2 activé !")
     -- Ta logique ici
 end
 
 UI.Callbacks.Page4.Button3 = function()
-    print("Page 4 - Bouton 3 activé !")
+    print("[LOGIC] Page 4 - Bouton 3 activé !")
     -- Ta logique ici
 end
 
 UI.Callbacks.Page4.Slider = function(value)
-    print("Page 4 - Slider valeur: " .. value)
+    print("[LOGIC] Page 4 - Slider valeur: " .. value)
     -- Ta logique ici
 end
 
-print("Logique chargée avec succès !")
+print("============================================")
+print("[LOGIC] ✅ LOGIQUE CHARGÉE AVEC SUCCÈS !")
+print("[LOGIC] 🎯 Tous les callbacks sont configurés")
+print("[LOGIC] 🔥 Prêt à l'emploi !")
+print("============================================")
 
 -- ====================================
 -- EXEMPLE D'UTILISATION AVANCÉE
