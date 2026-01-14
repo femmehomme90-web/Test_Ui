@@ -1,20 +1,28 @@
 -- UI.lua - Interface principale
 -- À charger en PREMIER avec ton executor
 
+print("[UI] Démarrage du chargement de l'interface...")
+
 local UI = {}
 UI.Callbacks = {}
+
+print("[UI] Initialisation des callbacks...")
 
 -- Initialisation des callbacks pour chaque page
 for i = 1, 4 do
     UI.Callbacks["Page" .. i] = {
-        Button1 = function() print("Page " .. i .. " - Button 1 non configuré") end,
-        Button2 = function() print("Page " .. i .. " - Button 2 non configuré") end,
-        Button3 = function() print("Page " .. i .. " - Button 3 non configuré") end,
-        Slider = function(value) print("Page " .. i .. " - Slider: " .. value) end
+        Button1 = function() print("[UI] Page " .. i .. " - Button 1 non configuré") end,
+        Button2 = function() print("[UI] Page " .. i .. " - Button 2 non configuré") end,
+        Button3 = function() print("[UI] Page " .. i .. " - Button 3 non configuré") end,
+        Slider = function(value) print("[UI] Page " .. i .. " - Slider: " .. value) end
     }
 end
 
+print("[UI] Callbacks initialisés pour 4 pages")
+
 -- Création de l'interface (simple et compatible mobile)
+print("[UI] Création des composants UI...")
+
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local UICorner = Instance.new("UICorner")
@@ -29,13 +37,20 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Protection
+print("[UI] Tentative de parenting dans CoreGui...")
 local success, parent = pcall(function()
     return game:GetService("CoreGui")
 end)
+
 if not success then
+    print("[UI] CoreGui non accessible, utilisation de PlayerGui")
     parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+else
+    print("[UI] CoreGui accessible")
 end
+
 ScreenGui.Parent = parent
+print("[UI] ScreenGui créé et parenté avec succès")
 
 -- Configuration MainFrame
 MainFrame.Name = "MainFrame"
@@ -46,6 +61,8 @@ MainFrame.Position = UDim2.new(0.5, -200, 0.5, -175)
 MainFrame.Size = UDim2.new(0, 400, 0, 350)
 MainFrame.Active = true
 MainFrame.Draggable = true
+
+print("[UI] MainFrame configuré (draggable activé)")
 
 UICorner.CornerRadius = UDim.new(0, 10)
 UICorner.Parent = MainFrame
@@ -74,8 +91,11 @@ CloseButton.TextSize = 16
 Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 5)
 
 CloseButton.MouseButton1Click:Connect(function()
+    print("[UI] Bouton de fermeture cliqué - Destruction de l'interface")
     ScreenGui:Destroy()
 end)
+
+print("[UI] Bouton de fermeture créé")
 
 -- Tab Container
 TabContainer.Name = "TabContainer"
@@ -91,6 +111,8 @@ ContentFrame.BackgroundTransparency = 1
 ContentFrame.Position = UDim2.new(0, 10, 0, 90)
 ContentFrame.Size = UDim2.new(1, -20, 1, -100)
 
+print("[UI] Containers créés")
+
 -- Fonction pour créer un bouton de tab
 local function createTab(pageNum, position)
     local tab = Instance.new("TextButton")
@@ -104,11 +126,14 @@ local function createTab(pageNum, position)
     tab.TextColor3 = Color3.fromRGB(200, 200, 200)
     tab.TextSize = 14
     Instance.new("UICorner", tab).CornerRadius = UDim.new(0, 5)
+    print("[UI] Tab " .. pageNum .. " créé")
     return tab
 end
 
 -- Fonction pour créer le contenu d'une page
 local function createPageContent(pageNum)
+    print("[UI] Création du contenu de la Page " .. pageNum .. "...")
+    
     local page = Instance.new("Frame")
     page.Name = "Page" .. pageNum
     page.Parent = ContentFrame
@@ -132,9 +157,12 @@ local function createPageContent(pageNum)
         
         -- Connection au callback
         button.MouseButton1Click:Connect(function()
+            print("[UI] Page " .. pageNum .. " - Button " .. i .. " cliqué")
             UI.Callbacks["Page" .. pageNum]["Button" .. i]()
         end)
     end
+    
+    print("[UI] 3 boutons créés pour Page " .. pageNum)
     
     -- Création du slider
     local sliderFrame = Instance.new("Frame")
@@ -192,11 +220,15 @@ local function createPageContent(pageNum)
     
     sliderButton.MouseButton1Down:Connect(function()
         dragging = true
+        print("[UI] Page " .. pageNum .. " - Slider drag démarré")
     end)
     
     game:GetService("UserInputService").InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
+            if dragging then
+                dragging = false
+                print("[UI] Page " .. pageNum .. " - Slider drag terminé")
+            end
         end
     end)
     
@@ -212,10 +244,14 @@ local function createPageContent(pageNum)
         end
     end)
     
+    print("[UI] Slider créé pour Page " .. pageNum)
+    
     return page
 end
 
 -- Création des tabs et pages
+print("[UI] Création des 4 pages et tabs...")
+
 local tabs = {}
 local pages = {}
 
@@ -224,9 +260,12 @@ for i = 1, 4 do
     pages[i] = createPageContent(i)
 end
 
+print("[UI] Toutes les pages créées avec succès")
+
 -- Fonction pour changer de page
 local currentPage = 1
 local function switchPage(pageNum)
+    print("[UI] Changement vers Page " .. pageNum)
     for i = 1, 4 do
         pages[i].Visible = false
         tabs[i].BackgroundColor3 = Color3.fromRGB(45, 45, 60)
@@ -243,9 +282,23 @@ for i = 1, 4 do
     end)
 end
 
+print("[UI] Tabs connectés avec succès")
+
 -- Afficher la première page par défaut
 switchPage(1)
 
-print("UI chargée avec succès ! Utilisez UI.Callbacks pour connecter vos fonctions.")
+print("============================================")
+print("[UI] ✅ INTERFACE CHARGÉE AVEC SUCCÈS !")
+print("[UI] 📱 Interface visible à l'écran")
+print("[UI] 🔧 Utilisez UI.Callbacks pour connecter vos fonctions")
+print("[UI] 📄 4 pages disponibles avec 3 boutons + 1 slider chacune")
+print("============================================")
+
+-- Si lancé seul sans Logic.lua, afficher un message
+if not _G.LogicLoaded then
+    print("[UI] ⚠️  ATTENTION: Logic.lua n'est pas chargé")
+    print("[UI] 💡 Les boutons utilisent les callbacks par défaut")
+    print("[UI] 📝 Chargez Logic.lua pour activer vos fonctions personnalisées")
+end
 
 return UI
