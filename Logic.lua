@@ -2,6 +2,9 @@
     Fichier de logique - Exemple d'utilisation
     Focus uniquement sur la logique, l'UI est gérée automatiquement
 ]]
+-- Services (nécessaires pour Rayfield)
+local players = game:GetService("Players")
+local local_player = players.LocalPlayer
 
 -- Charger l'UI générique
 local GenericUI = loadstring(game:HttpGet('https://raw.githubusercontent.com/femmehomme90-web/Test_Ui/refs/heads/main/Ui.lua'))()
