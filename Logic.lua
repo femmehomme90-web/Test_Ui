@@ -4,7 +4,8 @@
 print("[LOGIC] Démarrage du chargement de la logique...")
 
 -- Charger l'UI (remplace le chemin par ton vrai chemin ou utilise loadstring)
-loadstring(game:HttpGet('https://raw.githubusercontent.com/femmehomme90-web/Test_Ui/refs/heads/main/Ui.lua'))()
+-- CORRIGÉ (Ce qu'il faut mettre)
+local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/femmehomme90-web/Test_Ui/refs/heads/main/Ui.lua"))()
 
 print("[LOGIC] UI chargé avec succès")
 
@@ -120,29 +121,3 @@ print("[LOGIC] 🎯 Tous les callbacks sont configurés")
 print("[LOGIC] 🔥 Prêt à l'emploi !")
 print("============================================")
 
--- ====================================
--- EXEMPLE D'UTILISATION AVANCÉE
--- ====================================
-
---[[
--- Tu peux aussi créer des fonctions réutilisables :
-
-local function teleportPlayer(x, y, z)
-    local player = game.Players.LocalPlayer
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.CFrame = CFrame.new(x, y, z)
-    end
-end
-
-UI.Callbacks.Page1.Button1 = function()
-    teleportPlayer(0, 50, 0)
-end
-
--- Ou stocker des valeurs de slider :
-local sliderValues = {}
-
-UI.Callbacks.Page1.Slider = function(value)
-    sliderValues.page1 = value
-    print("Valeur stockée: " .. sliderValues.page1)
-end
-]]
