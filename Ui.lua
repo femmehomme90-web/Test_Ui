@@ -1,257 +1,251 @@
---[[
-    UI Générique Modulaire pour Roblox
-    Sépare complètement l'UI de la logique
-]]
+-- UI.lua - Interface principale
+-- À charger en PREMIER avec ton executor
 
--- Services (nécessaires pour Rayfield)
-local players = game:GetService("Players")
-local local_player = players.LocalPlayer
+local UI = {}
+UI.Callbacks = {}
 
-local GenericUI = {}
-GenericUI.__index = GenericUI
-
--- Configuration de l'UI
-local UI_CONFIG = {
-    buttons_per_page = 6,
-    sliders_per_page = 2,
-    pages = {
-        {name = "Page 1", icon = 4483362458},
-        {name = "Page 2", icon = 4483362458},
-        {name = "Page 3", icon = 4483362458},
-        {name = "Page 4", icon = 4483362458}
+-- Initialisation des callbacks pour chaque page
+for i = 1, 4 do
+    UI.Callbacks["Page" .. i] = {
+        Button1 = function() print("Page " .. i .. " - Button 1 non configuré") end,
+        Button2 = function() print("Page " .. i .. " - Button 2 non configuré") end,
+        Button3 = function() print("Page " .. i .. " - Button 3 non configuré") end,
+        Slider = function(value) print("Page " .. i .. " - Slider: " .. value) end
     }
-}
-
--- Créer une nouvelle instance d'UI
-function GenericUI.new(title, subtitle)
-    local self = setmetatable({}, GenericUI)
-    
-    self.title = title or "Generic UI"
-    self.subtitle = subtitle or "by AK♥"
-    self.pages = {}
-    self.buttons = {}
-    self.sliders = {}
-    self.toggles = {}
-    
-    self:_initialize()
-    
-    return self
 end
 
--- Initialiser Rayfield
-function GenericUI:_initialize()
-    local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- Création de l'interface (simple et compatible mobile)
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local UICorner = Instance.new("UICorner")
+local TitleLabel = Instance.new("TextLabel")
+local TabContainer = Instance.new("Frame")
+local ContentFrame = Instance.new("Frame")
+local CloseButton = Instance.new("TextButton")
+
+-- Configuration ScreenGui
+ScreenGui.Name = "CustomUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Protection
+local success, parent = pcall(function()
+    return game:GetService("CoreGui")
+end)
+if not success then
+    parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+end
+ScreenGui.Parent = parent
+
+-- Configuration MainFrame
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 400, 0, 350)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+-- Title
+TitleLabel.Name = "Title"
+TitleLabel.Parent = MainFrame
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Position = UDim2.new(0, 0, 0, 0)
+TitleLabel.Size = UDim2.new(1, 0, 0, 40)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "Custom Script UI"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 18
+
+-- Close Button
+CloseButton.Name = "CloseButton"
+CloseButton.Parent = MainFrame
+CloseButton.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+CloseButton.Position = UDim2.new(1, -35, 0, 5)
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 16
+Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 5)
+
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- Tab Container
+TabContainer.Name = "TabContainer"
+TabContainer.Parent = MainFrame
+TabContainer.BackgroundTransparency = 1
+TabContainer.Position = UDim2.new(0, 10, 0, 45)
+TabContainer.Size = UDim2.new(1, -20, 0, 35)
+
+-- Content Frame
+ContentFrame.Name = "ContentFrame"
+ContentFrame.Parent = MainFrame
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Position = UDim2.new(0, 10, 0, 90)
+ContentFrame.Size = UDim2.new(1, -20, 1, -100)
+
+-- Fonction pour créer un bouton de tab
+local function createTab(pageNum, position)
+    local tab = Instance.new("TextButton")
+    tab.Name = "Tab" .. pageNum
+    tab.Parent = TabContainer
+    tab.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+    tab.Position = UDim2.new(position, 0, 0, 0)
+    tab.Size = UDim2.new(0.23, 0, 1, 0)
+    tab.Font = Enum.Font.Gotham
+    tab.Text = "Page " .. pageNum
+    tab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    tab.TextSize = 14
+    Instance.new("UICorner", tab).CornerRadius = UDim.new(0, 5)
+    return tab
+end
+
+-- Fonction pour créer le contenu d'une page
+local function createPageContent(pageNum)
+    local page = Instance.new("Frame")
+    page.Name = "Page" .. pageNum
+    page.Parent = ContentFrame
+    page.BackgroundTransparency = 1
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.Visible = false
     
-    self.Window = Rayfield:CreateWindow({
-        Name = self.title,
-        LoadingTitle = "Generic UI",
-        LoadingSubtitle = self.subtitle,
-        ConfigurationSaving = {
-            Enabled = true,
-            FolderName = "GenericUI",
-            FileName = "Config"
-        },
-        Discord = {Enabled = false},
-        KeySystem = false
-    })
-    
-    self.Rayfield = Rayfield
-    
-    -- Créer les pages
-    for i, page_config in ipairs(UI_CONFIG.pages) do
-        local tab = self.Window:CreateTab(page_config.name, page_config.icon)
+    -- Création des 3 boutons
+    for i = 1, 3 do
+        local button = Instance.new("TextButton")
+        button.Name = "Button" .. i
+        button.Parent = page
+        button.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+        button.Position = UDim2.new(0, 0, 0, (i-1) * 55)
+        button.Size = UDim2.new(1, 0, 0, 45)
+        button.Font = Enum.Font.GothamBold
+        button.Text = "Button " .. i
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextSize = 15
+        Instance.new("UICorner", button).CornerRadius = UDim.new(0, 8)
         
-        self.pages[i] = {
-            tab = tab,
-            buttons = {},
-            sliders = {},
-            toggles = {}
-        }
-        
-        -- Créer les boutons par défaut
-        for j = 1, UI_CONFIG.buttons_per_page do
-            local btn = tab:CreateButton({
-                Name = "Button " .. j .. " (not configured)",
-                Callback = function()
-                    print("[Page " .. i .. " - Button " .. j .. "] Not configured")
-                end
-            })
-            self.pages[i].buttons[j] = btn
-        end
-        
-        -- Créer les sliders par défaut
-        for j = 1, UI_CONFIG.sliders_per_page do
-            local slider = tab:CreateSlider({
-                Name = "Slider " .. j .. " (not configured)",
-                Range = {0, 100},
-                Increment = 1,
-                CurrentValue = 50,
-                Flag = "Page" .. i .. "Slider" .. j,
-                Callback = function(value)
-                    print("[Page " .. i .. " - Slider " .. j .. "] Value:", value)
-                end
-            })
-            self.pages[i].sliders[j] = slider
-        end
+        -- Connection au callback
+        button.MouseButton1Click:Connect(function()
+            UI.Callbacks["Page" .. pageNum]["Button" .. i]()
+        end)
     end
     
-    -- Créer le bouton toggle
-    self:_create_toggle_button()
-end
-
--- Créer le bouton de toggle mobile
-function GenericUI:_create_toggle_button()
-    local screen_gui = Instance.new("ScreenGui")
-    screen_gui.Name = "GenericUIToggle"
-    screen_gui.ResetOnSpawn = false
-    screen_gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screen_gui.Parent = game:GetService("CoreGui")
+    -- Création du slider
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Name = "SliderFrame"
+    sliderFrame.Parent = page
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    sliderFrame.Position = UDim2.new(0, 0, 0, 175)
+    sliderFrame.Size = UDim2.new(1, 0, 0, 60)
+    Instance.new("UICorner", sliderFrame).CornerRadius = UDim.new(0, 8)
     
-    local button = Instance.new("TextButton")
-    button.Name = "ToggleButton"
-    button.Size = UDim2.new(0, 60, 0, 60)
-    button.Position = UDim2.new(1, -70, 0.5, -30)
-    button.BackgroundColor3 = Color3.fromRGB(255, 192, 203)
-    button.BorderSizePixel = 0
-    button.Font = Enum.Font.GothamBold
-    button.Text = "🎀"
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 30
-    button.Parent = screen_gui
+    local sliderLabel = Instance.new("TextLabel")
+    sliderLabel.Parent = sliderFrame
+    sliderLabel.BackgroundTransparency = 1
+    sliderLabel.Size = UDim2.new(1, 0, 0, 20)
+    sliderLabel.Font = Enum.Font.Gotham
+    sliderLabel.Text = "Slider: 0"
+    sliderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sliderLabel.TextSize = 14
     
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = button
+    local sliderBar = Instance.new("Frame")
+    sliderBar.Name = "SliderBar"
+    sliderBar.Parent = sliderFrame
+    sliderBar.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+    sliderBar.Position = UDim2.new(0.05, 0, 0.5, 0)
+    sliderBar.Size = UDim2.new(0.9, 0, 0, 8)
+    Instance.new("UICorner", sliderBar).CornerRadius = UDim.new(1, 0)
     
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(200, 150, 160)
-    stroke.Thickness = 3
-    stroke.Parent = button
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Name = "Fill"
+    sliderFill.Parent = sliderBar
+    sliderFill.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+    sliderFill.Size = UDim2.new(0, 0, 1, 0)
+    Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(1, 0)
     
-    button.Activated:Connect(function()
-        self.Rayfield:Toggle()
-        button.Size = UDim2.new(0, 55, 0, 55)
-        task.wait(0.1)
-        button.Size = UDim2.new(0, 60, 0, 60)
-    end)
+    local sliderButton = Instance.new("TextButton")
+    sliderButton.Name = "SliderButton"
+    sliderButton.Parent = sliderBar
+    sliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sliderButton.Position = UDim2.new(0, -8, 0.5, -8)
+    sliderButton.Size = UDim2.new(0, 16, 0, 16)
+    sliderButton.Text = ""
+    Instance.new("UICorner", sliderButton).CornerRadius = UDim.new(1, 0)
     
-    -- Drag functionality
     local dragging = false
-    local drag_input, drag_start, start_pos
+    local currentValue = 0
     
-    local function update(input)
-        local delta = input.Position - drag_start
-        button.Position = UDim2.new(
-            start_pos.X.Scale,
-            start_pos.X.Offset + delta.X,
-            start_pos.Y.Scale,
-            start_pos.Y.Offset + delta.Y
-        )
+    local function updateSlider(input)
+        local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+        currentValue = math.floor(pos * 100)
+        sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        sliderButton.Position = UDim2.new(pos, -8, 0.5, -8)
+        sliderLabel.Text = "Slider: " .. currentValue
+        UI.Callbacks["Page" .. pageNum].Slider(currentValue)
     end
     
-    button.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            drag_start = input.Position
-            start_pos = button.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
+    sliderButton.MouseButton1Down:Connect(function()
+        dragging = true
     end)
     
-    button.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            drag_input = input
+    game:GetService("UserInputService").InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
         end
     end)
     
     game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if input == drag_input and dragging then
-            update(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateSlider(input)
         end
     end)
     
-    self.toggle_gui = screen_gui
+    sliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            updateSlider(input)
+        end
+    end)
+    
+    return page
 end
 
--- ============================================
--- API PUBLIQUE POUR CONFIGURER L'UI
--- ============================================
+-- Création des tabs et pages
+local tabs = {}
+local pages = {}
 
--- Configurer un bouton
-function GenericUI:SetButton(page, button_num, name, callback)
-    if not self.pages[page] or not self.pages[page].buttons[button_num] then
-        warn("Invalid page or button number")
-        return
+for i = 1, 4 do
+    tabs[i] = createTab(i, (i-1) * 0.25 + 0.01)
+    pages[i] = createPageContent(i)
+end
+
+-- Fonction pour changer de page
+local currentPage = 1
+local function switchPage(pageNum)
+    for i = 1, 4 do
+        pages[i].Visible = false
+        tabs[i].BackgroundColor3 = Color3.fromRGB(45, 45, 60)
     end
-    
-    -- Recréer le bouton avec la nouvelle config
-    local tab = self.pages[page].tab
-    local section = tab:CreateSection(name)
-    
-    self.pages[page].buttons[button_num] = tab:CreateButton({
-        Name = name,
-        Callback = callback
-    })
+    pages[pageNum].Visible = true
+    tabs[pageNum].BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+    currentPage = pageNum
 end
 
--- Configurer un slider
-function GenericUI:SetSlider(page, slider_num, config)
-    if not self.pages[page] or not self.pages[page].sliders[slider_num] then
-        warn("Invalid page or slider number")
-        return
-    end
-    
-    local tab = self.pages[page].tab
-    
-    self.pages[page].sliders[slider_num] = tab:CreateSlider({
-        Name = config.name or "Slider",
-        Range = config.range or {0, 100},
-        Increment = config.increment or 1,
-        CurrentValue = config.default or 50,
-        Flag = config.flag or ("P" .. page .. "S" .. slider_num),
-        Callback = config.callback or function() end
-    })
+-- Connection des tabs
+for i = 1, 4 do
+    tabs[i].MouseButton1Click:Connect(function()
+        switchPage(i)
+    end)
 end
 
--- Ajouter un toggle (bonus)
-function GenericUI:AddToggle(page, name, callback, default)
-    if not self.pages[page] then
-        warn("Invalid page number")
-        return
-    end
-    
-    local tab = self.pages[page].tab
-    return tab:CreateToggle({
-        Name = name,
-        CurrentValue = default or false,
-        Flag = name:gsub(" ", ""),
-        Callback = callback
-    })
-end
+-- Afficher la première page par défaut
+switchPage(1)
 
--- Notification
-function GenericUI:Notify(title, content, duration)
-    self.Rayfield:Notify({
-        Title = title,
-        Content = content,
-        Duration = duration or 5,
-        Image = 4483362458
-    })
-end
+print("UI chargée avec succès ! Utilisez UI.Callbacks pour connecter vos fonctions.")
 
--- Détruire l'UI
-function GenericUI:Destroy()
-    if self.toggle_gui then
-        self.toggle_gui:Destroy()
-    end
-    self.Rayfield:Destroy()
-end
-
-return GenericUI
+return UI
