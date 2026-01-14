@@ -1,36 +1,108 @@
 --[[
-    Interface Only - Rayfield UI
-    Juste les boutons avec prints console
+    UI Générique Modulaire pour Roblox
+    Sépare complètement l'UI de la logique
 ]]
-
-local start_tick = tick()
 
 -- Services (nécessaires pour Rayfield)
 local players = game:GetService("Players")
 local local_player = players.LocalPlayer
 
--- Load Rayfield
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local GenericUI = {}
+GenericUI.__index = GenericUI
 
-local Window = Rayfield:CreateWindow({
-    Name = "🎀 CuddlyTrain - Steal A Brainrot",
-    LoadingTitle = "CuddlyTrain Ware",
-    LoadingSubtitle = "by AK♥",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "AstolfoWare",
-        FileName = "SAB_Config"
-    },
-    Discord = {
-        Enabled = false
-    },
-    KeySystem = false
-})
+-- Configuration de l'UI
+local UI_CONFIG = {
+    buttons_per_page = 6,
+    sliders_per_page = 2,
+    pages = {
+        {name = "Page 1", icon = 4483362458},
+        {name = "Page 2", icon = 4483362458},
+        {name = "Page 3", icon = 4483362458},
+        {name = "Page 4", icon = 4483362458}
+    }
+}
 
--- Créer un bouton toggle visible (pour mobile)
-local function create_toggle_button()
+-- Créer une nouvelle instance d'UI
+function GenericUI.new(title, subtitle)
+    local self = setmetatable({}, GenericUI)
+    
+    self.title = title or "Generic UI"
+    self.subtitle = subtitle or "by AK♥"
+    self.pages = {}
+    self.buttons = {}
+    self.sliders = {}
+    self.toggles = {}
+    
+    self:_initialize()
+    
+    return self
+end
+
+-- Initialiser Rayfield
+function GenericUI:_initialize()
+    local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+    
+    self.Window = Rayfield:CreateWindow({
+        Name = self.title,
+        LoadingTitle = "Generic UI",
+        LoadingSubtitle = self.subtitle,
+        ConfigurationSaving = {
+            Enabled = true,
+            FolderName = "GenericUI",
+            FileName = "Config"
+        },
+        Discord = {Enabled = false},
+        KeySystem = false
+    })
+    
+    self.Rayfield = Rayfield
+    
+    -- Créer les pages
+    for i, page_config in ipairs(UI_CONFIG.pages) do
+        local tab = self.Window:CreateTab(page_config.name, page_config.icon)
+        
+        self.pages[i] = {
+            tab = tab,
+            buttons = {},
+            sliders = {},
+            toggles = {}
+        }
+        
+        -- Créer les boutons par défaut
+        for j = 1, UI_CONFIG.buttons_per_page do
+            local btn = tab:CreateButton({
+                Name = "Button " .. j .. " (not configured)",
+                Callback = function()
+                    print("[Page " .. i .. " - Button " .. j .. "] Not configured")
+                end
+            })
+            self.pages[i].buttons[j] = btn
+        end
+        
+        -- Créer les sliders par défaut
+        for j = 1, UI_CONFIG.sliders_per_page do
+            local slider = tab:CreateSlider({
+                Name = "Slider " .. j .. " (not configured)",
+                Range = {0, 100},
+                Increment = 1,
+                CurrentValue = 50,
+                Flag = "Page" .. i .. "Slider" .. j,
+                Callback = function(value)
+                    print("[Page " .. i .. " - Slider " .. j .. "] Value:", value)
+                end
+            })
+            self.pages[i].sliders[j] = slider
+        end
+    end
+    
+    -- Créer le bouton toggle
+    self:_create_toggle_button()
+end
+
+-- Créer le bouton de toggle mobile
+function GenericUI:_create_toggle_button()
     local screen_gui = Instance.new("ScreenGui")
-    screen_gui.Name = "AstolfoToggleButton"
+    screen_gui.Name = "GenericUIToggle"
     screen_gui.ResetOnSpawn = false
     screen_gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screen_gui.Parent = game:GetService("CoreGui")
@@ -56,27 +128,14 @@ local function create_toggle_button()
     stroke.Thickness = 3
     stroke.Parent = button
     
-    -- Toggle l'UI Rayfield (compatible mobile)
     button.Activated:Connect(function()
-        Rayfield:Toggle()
-        print("🎀 UI toggled!")
-        
-        -- Animation
+        self.Rayfield:Toggle()
         button.Size = UDim2.new(0, 55, 0, 55)
         task.wait(0.1)
         button.Size = UDim2.new(0, 60, 0, 60)
     end)
     
-    -- Feedback visuel
-    button.MouseButton1Down:Connect(function()
-        button.BackgroundColor3 = Color3.fromRGB(230, 170, 180)
-    end)
-    
-    button.MouseButton1Up:Connect(function()
-        button.BackgroundColor3 = Color3.fromRGB(255, 192, 203)
-    end)
-    
-    -- Drag (mobile + PC)
+    -- Drag functionality
     local dragging = false
     local drag_input, drag_start, start_pos
     
@@ -118,220 +177,81 @@ local function create_toggle_button()
         end
     end)
     
-    return screen_gui
+    self.toggle_gui = screen_gui
 end
 
-local toggle_button_gui = create_toggle_button()
-
-print("🎀 ASTOLFO WARE LOADED! Tap the pink button to toggle UI!")
-
--- Tabs
-local MainTab = Window:CreateTab("🎯 Main", 4483362458)
-local EggTab = Window:CreateTab("🥚 Eggs", 4483362458)
-local PlayerTab = Window:CreateTab("👤 Player", 4483362458)
-local SettingsTab = Window:CreateTab("⚙️ Settings", 4483362458)
-
 -- ============================================
--- MAIN TAB
+-- API PUBLIQUE POUR CONFIGURER L'UI
 -- ============================================
 
--- Trade Section
-local TradeSection = MainTab:CreateSection("Trade Automation")
+-- Configurer un bouton
+function GenericUI:SetButton(page, button_num, name, callback)
+    if not self.pages[page] or not self.pages[page].buttons[button_num] then
+        warn("Invalid page or button number")
+        return
+    end
+    
+    -- Recréer le bouton avec la nouvelle config
+    local tab = self.pages[page].tab
+    local section = tab:CreateSection(name)
+    
+    self.pages[page].buttons[button_num] = tab:CreateButton({
+        Name = name,
+        Callback = callback
+    })
+end
 
-MainTab:CreateToggle({
-    Name = "Auto Trade",
-    CurrentValue = false,
-    Flag = "AutoTrade",
-    Callback = function(value)
-        print("🔄 Auto Trade:", value)
-    end,
-})
+-- Configurer un slider
+function GenericUI:SetSlider(page, slider_num, config)
+    if not self.pages[page] or not self.pages[page].sliders[slider_num] then
+        warn("Invalid page or slider number")
+        return
+    end
+    
+    local tab = self.pages[page].tab
+    
+    self.pages[page].sliders[slider_num] = tab:CreateSlider({
+        Name = config.name or "Slider",
+        Range = config.range or {0, 100},
+        Increment = config.increment or 1,
+        CurrentValue = config.default or 50,
+        Flag = config.flag or ("P" .. page .. "S" .. slider_num),
+        Callback = config.callback or function() end
+    })
+end
 
-MainTab:CreateToggle({
-    Name = "Accept 2+ NPC Brainrots",
-    CurrentValue = false,
-    Flag = "AcceptMultipleNPC",
-    Callback = function(value)
-        print("🎁 Accept Multiple NPC:", value)
-    end,
-})
+-- Ajouter un toggle (bonus)
+function GenericUI:AddToggle(page, name, callback, default)
+    if not self.pages[page] then
+        warn("Invalid page number")
+        return
+    end
+    
+    local tab = self.pages[page].tab
+    return tab:CreateToggle({
+        Name = name,
+        CurrentValue = default or false,
+        Flag = name:gsub(" ", ""),
+        Callback = callback
+    })
+end
 
-MainTab:CreateToggle({
-    Name = "Accept 2+ My Brainrots",
-    CurrentValue = false,
-    Flag = "AcceptMultipleMine",
-    Callback = function(value)
-        print("💼 Accept Multiple Mine:", value)
-    end,
-})
+-- Notification
+function GenericUI:Notify(title, content, duration)
+    self.Rayfield:Notify({
+        Title = title,
+        Content = content,
+        Duration = duration or 5,
+        Image = 4483362458
+    })
+end
 
-MainTab:CreateSlider({
-    Name = "Auto Trade Delay (seconds)",
-    Range = {0.5, 10},
-    Increment = 0.5,
-    CurrentValue = 1,
-    Flag = "AutoTradeDelay",
-    Callback = function(value)
-        print("⏱️ Trade Delay:", value)
-    end,
-})
+-- Détruire l'UI
+function GenericUI:Destroy()
+    if self.toggle_gui then
+        self.toggle_gui:Destroy()
+    end
+    self.Rayfield:Destroy()
+end
 
--- Plot Section
-local PlotSection = MainTab:CreateSection("Plot Management")
-
-MainTab:CreateToggle({
-    Name = "Auto Collect Cash",
-    CurrentValue = false,
-    Flag = "AutoCollectCash",
-    Callback = function(value)
-        print("💰 Auto Collect Cash:", value)
-    end,
-})
-
-MainTab:CreateSlider({
-    Name = "Collect Cash Delay (seconds)",
-    Range = {1, 60},
-    Increment = 1,
-    CurrentValue = 1,
-    Flag = "CollectDelay",
-    Callback = function(value)
-        print("⏱️ Collect Delay:", value)
-    end,
-})
-
--- Sell Section
-local SellSection = MainTab:CreateSection("Sell Brainrots")
-
-MainTab:CreateButton({
-    Name = "Sell Held Brainrot",
-    Callback = function()
-        print("🛒 Sell Held Brainrot clicked!")
-    end,
-})
-
-MainTab:CreateButton({
-    Name = "Sell All Brainrots",
-    Callback = function()
-        print("🛒 Sell All Brainrots clicked!")
-    end,
-})
-
--- ============================================
--- EGG TAB
--- ============================================
-
-local EggSection = EggTab:CreateSection("Egg Automation")
-
-EggTab:CreateToggle({
-    Name = "Auto Buy Eggs",
-    CurrentValue = false,
-    Flag = "AutoBuyEggs",
-    Callback = function(value)
-        print("🥚 Auto Buy Eggs:", value)
-    end,
-})
-
-EggTab:CreateSlider({
-    Name = "Buy Eggs Delay (seconds)",
-    Range = {1, 60},
-    Increment = 1,
-    CurrentValue = 1,
-    Flag = "EggDelay",
-    Callback = function(value)
-        print("⏱️ Egg Delay:", value)
-    end,
-})
-
-EggTab:CreateDropdown({
-    Name = "Select Eggs to Buy",
-    Options = {"Egg1", "Egg2", "Egg3"}, -- Liste vide pour l'instant
-    CurrentOption = {},
-    MultipleOptions = true,
-    Flag = "SelectedEggs",
-    Callback = function(options)
-        print("🥚 Selected Eggs:", table.concat(options, ", "))
-    end,
-})
-
--- ============================================
--- PLAYER TAB
--- ============================================
-
-local PlayerSection = PlayerTab:CreateSection("Player Settings")
-
-PlayerTab:CreateToggle({
-    Name = "Anti AFK",
-    CurrentValue = false,
-    Flag = "AntiAFK",
-    Callback = function(value)
-        print("😴 Anti AFK:", value)
-    end,
-})
-
-PlayerTab:CreateInput({
-    Name = "Join Private Server",
-    PlaceholderText = "Enter server code",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(text)
-        print("🔗 Join Server Code:", text)
-    end,
-})
-
--- Misc Section
-local MiscSection = PlayerTab:CreateSection("Miscellaneous")
-
-PlayerTab:CreateToggle({
-    Name = "Auto Wheel Spin",
-    CurrentValue = false,
-    Flag = "AutoWheel",
-    Callback = function(value)
-        print("🎡 Auto Wheel Spin:", value)
-    end,
-})
-
--- ============================================
--- SETTINGS TAB
--- ============================================
-
-local InfoSection = SettingsTab:CreateSection("Information")
-
-SettingsTab:CreateParagraph({
-    Title = "🎀 Astolfo Ware",
-    Content = "Steal A Brainrot automation script. Configure your settings in the Main and Eggs tabs."
-})
-
-SettingsTab:CreateButton({
-    Name = "Show Current Money",
-    Callback = function()
-        print("💵 Show Money clicked!")
-    end,
-})
-
--- Debug Section
-local DebugSection = SettingsTab:CreateSection("Debug Tools")
-
-SettingsTab:CreateButton({
-    Name = "Dump Trade Contents",
-    Callback = function()
-        print("📦 Dump Trade clicked!")
-    end,
-})
-
-SettingsTab:CreateButton({
-    Name = "Destroy UI",
-    Callback = function()
-        print("💥 Destroying UI...")
-        if toggle_button_gui then toggle_button_gui:Destroy() end
-        Rayfield:Destroy()
-    end,
-})
-
--- Load notification
-Rayfield:Notify({
-    Title = "✅ Loaded Successfully",
-    Content = "Script loaded in " .. string.format("%.2f", tick() - start_tick) .. " seconds",
-    Duration = 5,
-    Image = 4483362458,
-})
-
-print("✨ Interface chargée! Tous les boutons affichent des prints dans la console.")
+return GenericUI
