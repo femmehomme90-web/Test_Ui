@@ -1,147 +1,54 @@
--- Variables locales nécessaires
-local config = getfenv().gui_config or nil
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/nfpw/XXSCRIPT/refs/heads/main/Library/Module.lua"))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Création de la fenêtre principale
-local window = library:CreateWindow(config, gethui())
-local window_name = library:SetWindowName("Mon Interface Script | " .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name)
+local Window = Rayfield:CreateWindow({
+   Name = "Rayfield Example Window",
+   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   LoadingTitle = "Rayfield Interface Suite",
+   LoadingSubtitle = "by Sirius",
+   ShowText = "Rayfield", -- for mobile users to unhide rayfield, change if you'd like
+   Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
 
--- Création des onglets
-local tabs = {
-    page1 = window:CreateTab("Page 1"),
-    page2 = window:CreateTab("Page 2"),
-    settings = window:CreateTab("Paramètres")
-}
+   ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
 
--- Création des sections
-local sections = {
-    -- Page 1
-    boutons_page1 = tabs.page1:CreateSection("Boutons", "left"),
-    sliders_page1 = tabs.page1:CreateSection("Sliders", "right"),
-    
-    -- Page 2
-    boutons_page2 = tabs.page2:CreateSection("Boutons", "left"),
-    sliders_page2 = tabs.page2:CreateSection("Sliders", "right"),
-    
-    -- Paramètres
-    gui_settings = tabs.settings:CreateSection("Interface", "left")
-}
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
 
--- Fonction de notification
-function notify(title, context, cooldown)
-    window:Notify(title, context, cooldown)
-end
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil, -- Create a custom folder for your hub/game
+      FileName = "Big Hub"
+   },
 
--- ============================================
--- PAGE 1 - BOUTONS
--- ============================================
+   Discord = {
+      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+   },
 
-sections.boutons_page1:CreateToggle("bouton.Page1.1", false, function(value)
-    library.flags.bouton_page1_1 = value
-    if value then
-        notify("Bouton", "bouton.Page1.1 activé", 3)
-    else
-        notify("Bouton", "bouton.Page1.1 désactivé", 3)
-    end
-end)
+   KeySystem = false, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided", -- Use this to tell the user how to get a key
+      FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"Hello"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+   }
+})
 
-sections.boutons_page1:CreateToggle("bouton.Page1.2", false, function(value)
-    library.flags.bouton_page1_2 = value
-    if value then
-        notify("Bouton", "bouton.Page1.2 activé", 3)
-    end
-end)
+local Tab = Window:CreateTab("Tab Example", 4483362458) -- Title, Image
 
-sections.boutons_page1:CreateToggle("bouton.Page1.3", false, function(value)
-    library.flags.bouton_page1_3 = value
-    if value then
-        notify("Bouton", "bouton.Page1.3 activé", 3)
-    end
-end)
+local Tab = Window:CreateTab("Tab Example", "rewind")
 
-sections.boutons_page1:CreateButton("bouton.Page1.4", function()
-    notify("Bouton", "bouton.Page1.4 cliqué!", 3)
-end)
+local Section = Tab:CreateSection("Section Example")
 
--- ============================================
--- PAGE 1 - SLIDERS
--- ============================================
+local Divider = Tab:CreateDivider()
 
-sections.sliders_page1:CreateSlider("slider.Page1.1", 0, 100, 50, function(value)
-    library.flags.slider_page1_1 = value
-end)
-
-sections.sliders_page1:CreateSlider("slider.Page1.2", 0, 200, 100, function(value)
-    library.flags.slider_page1_2 = value
-end)
-
-sections.sliders_page1:CreateSlider("slider.Page1.3", 1, 50, 10, function(value)
-    library.flags.slider_page1_3 = value
-end)
-
--- ============================================
--- PAGE 2 - BOUTONS
--- ============================================
-
-sections.boutons_page2:CreateToggle("bouton.Page2.1", false, function(value)
-    library.flags.bouton_page2_1 = value
-    if value then
-        notify("Bouton", "bouton.Page2.1 activé", 3)
-    end
-end)
-
-sections.boutons_page2:CreateToggle("bouton.Page2.2", false, function(value)
-    library.flags.bouton_page2_2 = value
-    if value then
-        notify("Bouton", "bouton.Page2.2 activé", 3)
-    end
-end)
-
-sections.boutons_page2:CreateButton("bouton.Page2.3", function()
-    notify("Bouton", "bouton.Page2.3 cliqué!", 3)
-end)
-
--- ============================================
--- PAGE 2 - SLIDERS
--- ============================================
-
-sections.sliders_page2:CreateSlider("slider.Page2.1", 1, 100, 25, function(value)
-    library.flags.slider_page2_1 = value
-end)
-
-sections.sliders_page2:CreateSlider("slider.Page2.2", 0, 500, 250, function(value)
-    library.flags.slider_page2_2 = value
-end)
-
--- ============================================
--- PARAMÈTRES
--- ============================================
-
-sections.gui_settings:CreateToggle("Anti AFK", false, function(value)
-    library.flags.anti_afk = value
-    if value then
-        notify("Paramètres", "Anti AFK activé", 3)
-    else
-        notify("Paramètres", "Anti AFK désactivé", 3)
-    end
-end)
-
-sections.gui_settings:CreateButton("Réinitialiser l'interface", function()
-    notify("Paramètres", "Interface réinitialisée!", 3)
-end)
-
--- Anti AFK automatique
-local virtual_user = game:GetService("VirtualUser")
-local local_player = game:GetService("Players").LocalPlayer
-
-local_player.Idled:Connect(function()
-    if (library.flags.anti_afk) then
-        virtual_user:CaptureController()
-        virtual_user:ClickButton2(Vector2.new())
-    end
-end)
-
--- Notification de démarrage
-notify("Interface", "Script chargé avec succès!", 5)
-
-print("Interface chargée avec succès!")
+Divider:Set(false) -- Whether the divider's visibility is to be set to true or false.
+local Button = Tab:CreateButton({
+   Name = "Button Example",
+   Callback = function()
+   -- The function that takes place when the button is pressed
+   end,
+})
