@@ -2,8 +2,23 @@
 -- Créé pour Codex
 
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
+
+-- Utiliser gethui() ou PlayerGui selon l'executor
+local function getGuiParent()
+    if gethui then
+        return gethui()
+    elseif syn and syn.protect_gui then
+        local gui = Instance.new("ScreenGui")
+        syn.protect_gui(gui)
+        gui.Parent = game:GetService("CoreGui")
+        return game:GetService("CoreGui")
+    else
+        return Players.LocalPlayer:WaitForChild("PlayerGui")
+    end
+end
+
+local GuiParent = getGuiParent()
 
 -- Variables globales
 local RemoteSpy = {}
@@ -17,7 +32,7 @@ local function createUI()
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "RemoteSpyUI"
     ScreenGui.ResetOnSpawn = false
-    ScreenGui.Parent = CoreGui
+    ScreenGui.Parent = GuiParent
 
     -- Frame principale
     local MainFrame = Instance.new("Frame")
@@ -320,7 +335,7 @@ end
 
 -- Mettre à jour les compteurs
 local function updateCounts()
-    local gui = CoreGui:FindFirstChild("RemoteSpyUI")
+    local gui = GuiParent:FindFirstChild("RemoteSpyUI")
     if gui then
         local liveTab = gui.MainFrame.TabsFrame.LiveTab
         local bannedTab = gui.MainFrame.TabsFrame.BannedTab
@@ -361,7 +376,7 @@ local function scanRemotes()
                 })
                 
                 if RemoteSpy.ActiveTab == "live" then
-                    local gui = CoreGui:FindFirstChild("RemoteSpyUI")
+                    local gui = GuiParent:FindFirstChild("RemoteSpyUI")
                     if gui then
                         updateList(gui.MainFrame.ListFrame, RemoteSpy.Remotes, false)
                         updateCounts()
