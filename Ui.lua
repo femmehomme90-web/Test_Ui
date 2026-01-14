@@ -1,146 +1,147 @@
--- Chargement de la bibliothèque Rayfield
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- Variables locales nécessaires
+local config = getfenv().gui_config or nil
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/nfpw/XXSCRIPT/refs/heads/main/Library/Module.lua"))()
 
 -- Création de la fenêtre principale
-local Window = Rayfield:CreateWindow({
-   Name = "Mon Script Interface",
-   LoadingTitle = "Chargement de l'interface...",
-   LoadingSubtitle = "by Votre Nom",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "MonScriptConfig",
-      FileName = "Config"
-   },
-   Discord = {
-      Enabled = false,
-      Invite = "noinvitelink",
-      RememberJoins = true
-   },
-   KeySystem = false
-})
+local window = library:CreateWindow(config, gethui())
+local window_name = library:SetWindowName("Mon Interface Script | " .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name)
 
--- Modification du thème (changez "Default" par le thème souhaité)
--- Thèmes disponibles: Default, AmberGlow, Amethyst, Bloom, DarkBlue, Green, Light, Ocean, Serenity
-Window:ModifyTheme('Ocean')
+-- Création des onglets
+local tabs = {
+    page1 = window:CreateTab("Page 1"),
+    page2 = window:CreateTab("Page 2"),
+    settings = window:CreateTab("Paramètres")
+}
 
--- Création de l'onglet Page 1
-local Page1 = Window:CreateTab("Page 1", 4483362458)
+-- Création des sections
+local sections = {
+    -- Page 1
+    boutons_page1 = tabs.page1:CreateSection("Boutons", "left"),
+    sliders_page1 = tabs.page1:CreateSection("Sliders", "right"),
+    
+    -- Page 2
+    boutons_page2 = tabs.page2:CreateSection("Boutons", "left"),
+    sliders_page2 = tabs.page2:CreateSection("Sliders", "right"),
+    
+    -- Paramètres
+    gui_settings = tabs.settings:CreateSection("Interface", "left")
+}
 
--- Section pour les boutons
-local Section1 = Page1:CreateSection("Boutons")
+-- Fonction de notification
+function notify(title, context, cooldown)
+    window:Notify(title, context, cooldown)
+end
 
--- Boutons Page 1
-local Bouton_Page1_1 = Page1:CreateButton({
-   Name = "bouton.Page1.1",
-   Callback = function()
-      print("bouton.Page1.1 cliqué")
-   end,
-})
+-- ============================================
+-- PAGE 1 - BOUTONS
+-- ============================================
 
-local Bouton_Page1_2 = Page1:CreateButton({
-   Name = "bouton.Page1.2",
-   Callback = function()
-      print("bouton.Page1.2 cliqué")
-   end,
-})
+sections.boutons_page1:CreateToggle("bouton.Page1.1", false, function(value)
+    library.flags.bouton_page1_1 = value
+    if value then
+        notify("Bouton", "bouton.Page1.1 activé", 3)
+    else
+        notify("Bouton", "bouton.Page1.1 désactivé", 3)
+    end
+end)
 
-local Bouton_Page1_3 = Page1:CreateButton({
-   Name = "bouton.Page1.3",
-   Callback = function()
-      print("bouton.Page1.3 cliqué")
-   end,
-})
+sections.boutons_page1:CreateToggle("bouton.Page1.2", false, function(value)
+    library.flags.bouton_page1_2 = value
+    if value then
+        notify("Bouton", "bouton.Page1.2 activé", 3)
+    end
+end)
 
--- Section pour les sliders
-local Section2 = Page1:CreateSection("Sliders")
+sections.boutons_page1:CreateToggle("bouton.Page1.3", false, function(value)
+    library.flags.bouton_page1_3 = value
+    if value then
+        notify("Bouton", "bouton.Page1.3 activé", 3)
+    end
+end)
 
--- Sliders Page 1
-local Slider_Page1_1 = Page1:CreateSlider({
-   Name = "slider.Page1.1",
-   Range = {0, 100},
-   Increment = 1,
-   Suffix = "%",
-   CurrentValue = 50,
-   Flag = "Slider1",
-   Callback = function(Value)
-      print("slider.Page1.1 valeur:", Value)
-   end,
-})
+sections.boutons_page1:CreateButton("bouton.Page1.4", function()
+    notify("Bouton", "bouton.Page1.4 cliqué!", 3)
+end)
 
-local Slider_Page1_2 = Page1:CreateSlider({
-   Name = "slider.Page1.2",
-   Range = {0, 200},
-   Increment = 5,
-   Suffix = " units",
-   CurrentValue = 100,
-   Flag = "Slider2",
-   Callback = function(Value)
-      print("slider.Page1.2 valeur:", Value)
-   end,
-})
+-- ============================================
+-- PAGE 1 - SLIDERS
+-- ============================================
 
--- Création de l'onglet Page 2
-local Page2 = Window:CreateTab("Page 2", 4483362458)
+sections.sliders_page1:CreateSlider("slider.Page1.1", 0, 100, 50, function(value)
+    library.flags.slider_page1_1 = value
+end)
 
--- Section pour les boutons
-local Section3 = Page2:CreateSection("Boutons")
+sections.sliders_page1:CreateSlider("slider.Page1.2", 0, 200, 100, function(value)
+    library.flags.slider_page1_2 = value
+end)
 
--- Boutons Page 2
-local Bouton_Page2_1 = Page2:CreateButton({
-   Name = "bouton.Page2.1",
-   Callback = function()
-      print("bouton.Page2.1 cliqué")
-   end,
-})
+sections.sliders_page1:CreateSlider("slider.Page1.3", 1, 50, 10, function(value)
+    library.flags.slider_page1_3 = value
+end)
 
-local Bouton_Page2_2 = Page2:CreateButton({
-   Name = "bouton.Page2.2",
-   Callback = function()
-      print("bouton.Page2.2 cliqué")
-   end,
-})
+-- ============================================
+-- PAGE 2 - BOUTONS
+-- ============================================
 
--- Section pour les sliders
-local Section4 = Page2:CreateSection("Sliders")
+sections.boutons_page2:CreateToggle("bouton.Page2.1", false, function(value)
+    library.flags.bouton_page2_1 = value
+    if value then
+        notify("Bouton", "bouton.Page2.1 activé", 3)
+    end
+end)
 
--- Sliders Page 2
-local Slider_Page2_1 = Page2:CreateSlider({
-   Name = "slider.Page2.1",
-   Range = {1, 50},
-   Increment = 1,
-   Suffix = "x",
-   CurrentValue = 10,
-   Flag = "Slider3",
-   Callback = function(Value)
-      print("slider.Page2.1 valeur:", Value)
-   end,
-})
+sections.boutons_page2:CreateToggle("bouton.Page2.2", false, function(value)
+    library.flags.bouton_page2_2 = value
+    if value then
+        notify("Bouton", "bouton.Page2.2 activé", 3)
+    end
+end)
 
--- Création de l'onglet Paramètres
-local Settings = Window:CreateTab("Paramètres", 4483362458)
+sections.boutons_page2:CreateButton("bouton.Page2.3", function()
+    notify("Bouton", "bouton.Page2.3 cliqué!", 3)
+end)
 
-local Section5 = Settings:CreateSection("Thème")
+-- ============================================
+-- PAGE 2 - SLIDERS
+-- ============================================
 
--- Bouton pour changer le thème
-local ThemeButton = Settings:CreateButton({
-   Name = "Changer le thème (Ocean)",
-   Callback = function()
-      Window:ModifyTheme('Ocean')
-      Rayfield:Notify({
-         Title = "Thème changé",
-         Content = "Le thème Ocean a été appliqué",
-         Duration = 3,
-         Image = 4483362458,
-      })
-   end,
-})
+sections.sliders_page2:CreateSlider("slider.Page2.1", 1, 100, 25, function(value)
+    library.flags.slider_page2_1 = value
+end)
 
--- Notification de bienvenue
-Rayfield:Notify({
-   Title = "Interface chargée",
-   Content = "L'interface a été chargée avec succès!",
-   Duration = 5,
-   Image = 4483362458,
-})
+sections.sliders_page2:CreateSlider("slider.Page2.2", 0, 500, 250, function(value)
+    library.flags.slider_page2_2 = value
+end)
 
-print("Script chargé avec succès!")
+-- ============================================
+-- PARAMÈTRES
+-- ============================================
+
+sections.gui_settings:CreateToggle("Anti AFK", false, function(value)
+    library.flags.anti_afk = value
+    if value then
+        notify("Paramètres", "Anti AFK activé", 3)
+    else
+        notify("Paramètres", "Anti AFK désactivé", 3)
+    end
+end)
+
+sections.gui_settings:CreateButton("Réinitialiser l'interface", function()
+    notify("Paramètres", "Interface réinitialisée!", 3)
+end)
+
+-- Anti AFK automatique
+local virtual_user = game:GetService("VirtualUser")
+local local_player = game:GetService("Players").LocalPlayer
+
+local_player.Idled:Connect(function()
+    if (library.flags.anti_afk) then
+        virtual_user:CaptureController()
+        virtual_user:ClickButton2(Vector2.new())
+    end
+end)
+
+-- Notification de démarrage
+notify("Interface", "Script chargé avec succès!", 5)
+
+print("Interface chargée avec succès!")
