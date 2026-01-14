@@ -13,8 +13,8 @@ print("[MAIN] Jeu chargé, initialisation du système...")
 
 -- Configuration des URLs des scripts
 local SCRIPTS = {
-    UI = "https://votre-repo.com/ui.lua",      -- Remplacer par votre URL
-    LOGIC = "https://votre-repo.com/logic.lua" -- Remplacer par votre URL
+    UI = "https://github.com/femmehomme90-web/Test_Ui/raw/refs/heads/main/Ui.lua",      -- Remplacer par votre URL
+    LOGIC = "https://raw.githubusercontent.com/femmehomme90-web/Test_Ui/refs/heads/main/Ui.lua" -- Remplacer par votre URL
 }
 
 -- Fonction de chargement sécurisé
