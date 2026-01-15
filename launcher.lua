@@ -1,63 +1,146 @@
---[[
-    MAIN.LUA - Orchestrateur principal
-    Charge ui.lua puis logic.lua en cascade
-    Compatible avec les executors Roblox (PC/Android)
-]]
+-- Script pour vérifier les stands occupés via attributes
+-- À exécuter directement dans ton executor
 
--- Attendre que le jeu soit complètement chargé
-if not game:IsLoaded() then
-    game.Loaded:Wait()
+local function checkStands()
+    print("==============================================")
+    print("🔍 VÉRIFICATION DES STANDS")
+    print("==============================================")
+    
+    -- Accéder aux stands
+    local workspace = game:GetService("Workspace")
+    local standsFolder = workspace.CoreObjects.Plots.Plot1.Stands
+    
+    if not standsFolder then
+        warn("❌ Dossier Stands introuvable!")
+        return
+    end
+    
+    print("📍 Parcours de:", standsFolder:GetFullName())
+    print("----------------------------------------------")
+    
+    local occupiedCount = 0
+    local freeCount = 0
+    local totalCount = 0
+    
+    -- Parcourir tous les stands
+    for _, stand in pairs(standsFolder:GetChildren()) do
+        if stand.Name:match("^Stand%d+$") then
+            totalCount = totalCount + 1
+            
+            -- Récupérer tous les attributes
+            local attributes = stand:GetAttributes()
+            
+            -- Afficher les infos du stand
+            print("\n🎯 " .. stand.Name .. ":")
+            
+            -- Vérifier si le stand a des attributes
+            local hasAttributes = false
+            for attrName, attrValue in pairs(attributes) do
+                hasAttributes = true
+                print("  📋 " .. attrName .. " = " .. tostring(attrValue))
+                
+                -- Déterminer si occupé basé sur certains attributes
+                if attrName:lower():match("occupied") or 
+                   attrName:lower():match("egg") or 
+                   attrName:lower():match("brainrot") then
+                    if attrValue == true or (type(attrValue) == "string" and attrValue ~= "") then
+                        occupiedCount = occupiedCount + 1
+                        print("  ✅ OCCUPÉ")
+                    else
+                        freeCount = freeCount + 1
+                        print("  ❌ LIBRE")
+                    end
+                end
+            end
+            
+            if not hasAttributes then
+                print("  ℹ️ Aucun attribute trouvé (probablement LIBRE)")
+                freeCount = freeCount + 1
+            end
+        end
+    end
+    
+    print("\n==============================================")
+    print("📊 RÉSUMÉ:")
+    print("  Total: " .. totalCount .. " stands")
+    print("  Occupés: " .. occupiedCount)
+    print("  Libres: " .. freeCount)
+    print("==============================================")
 end
 
-print("[MAIN] Jeu chargé, initialisation du système...")
+-- Exécuter la vérification
+checkStands()
 
--- Configuration des URLs des scripts
-local SCRIPTS = {
-    UI = "https://github.com/femmehomme90-web/Test_Ui/raw/refs/heads/main/Ui.lua",      -- Remplacer par votre URL
-    LOGIC = "https://raw.githubusercontent.com/femmehomme90-web/Test_Ui/refs/heads/main/Ui.lua" -- Remplacer par votre URL
-}
-
--- Fonction de chargement sécurisé
-local function loadScript(name, url)
-    print("[MAIN] Chargement de " .. name .. "...")
-    local success, result = pcall(function()
-        return loadstring(game:HttpGet(url))()
-    end)
+-- Fonction pour vérifier un stand spécifique
+local function checkSpecificStand(standName)
+    local workspace = game:GetService("Workspace")
+    local stand = workspace.CoreObjects.Plots.Plot1.Stands:FindFirstChild(standName)
     
-    if success then
-        print("[MAIN] ✓ " .. name .. " chargé avec succès")
-        return true
-    else
-        warn("[MAIN] ✗ Erreur lors du chargement de " .. name .. ": " .. tostring(result))
+    if not stand then
+        warn("❌ Stand '" .. standName .. "' introuvable!")
+        return nil
+    end
+    
+    print("\n🔎 Vérification de: " .. standName)
+    print("----------------------------------------------")
+    
+    local attributes = stand:GetAttributes()
+    
+    if next(attributes) == nil then
+        print("ℹ️ Aucun attribute (probablement LIBRE)")
         return false
     end
+    
+    for attrName, attrValue in pairs(attributes) do
+        print("📋 " .. attrName .. " = " .. tostring(attrValue))
+    end
+    
+    return attributes
 end
 
--- Étape 1 : Charger l'interface utilisateur
-if not loadScript("UI", SCRIPTS.UI) then
-    error("[MAIN] Impossible de continuer sans l'interface")
+-- Fonction pour obtenir le premier stand libre
+local function getFirstFreeStand()
+    local workspace = game:GetService("Workspace")
+    local standsFolder = workspace.CoreObjects.Plots.Plot1.Stands
+    
+    for i = 1, 20 do
+        local standName = "Stand" .. i
+        local stand = standsFolder:FindFirstChild(standName)
+        
+        if stand then
+            local attributes = stand:GetAttributes()
+            
+            -- Si aucun attribute ou tous vides, c'est libre
+            local isFree = true
+            for attrName, attrValue in pairs(attributes) do
+                if attrName:lower():match("occupied") or 
+                   attrName:lower():match("egg") or 
+                   attrName:lower():match("brainrot") then
+                    if attrValue == true or (type(attrValue) == "string" and attrValue ~= "") then
+                        isFree = false
+                        break
+                    end
+                end
+            end
+            
+            if isFree then
+                print("✅ Premier stand libre trouvé: " .. standName)
+                return standName
+            end
+        end
+    end
+    
+    print("❌ Aucun stand libre trouvé!")
+    return nil
 end
 
--- Étape 2 : Attendre que l'UI soit prêt
-local maxWait = 100 -- 10 secondes max
-local waited = 0
-while not getgenv().UI and waited < maxWait do
-    task.wait(0.1)
-    waited = waited + 1
-end
+-- Exemples d'utilisation:
+print("\n💡 Fonctions disponibles:")
+print("  checkStands() - Vérifier tous les stands")
+print("  checkSpecificStand('Stand1') - Vérifier un stand précis")
+print("  getFirstFreeStand() - Trouver le premier stand libre")
 
-if not getgenv().UI then
-    error("[MAIN] Timeout : l'UI n'a pas initialisé getgenv().UI")
-end
-
-print("[MAIN] ✓ Interface utilisateur prête")
-
--- Étape 3 : Charger la logique métier
-if not loadScript("LOGIC", SCRIPTS.LOGIC) then
-    warn("[MAIN] La logique n'a pas pu être chargée, l'UI restera non-fonctionnelle")
-end
-
-print("[MAIN] ════════════════════════════════════")
-print("[MAIN] Système opérationnel !")
-print("[MAIN] UI et Logique connectées")
-print("[MAIN] ════════════════════════════════════")
+-- Rendre les fonctions globales pour utilisation ultérieure
+_G.checkStands = checkStands
+_G.checkSpecificStand = checkSpecificStand
+_G.getFirstFreeStand = getFirstFreeStand
