@@ -1,0 +1,36 @@
+je fais des script roblox, voila ce que j'ai pour l'instant, tu peux m'aider a les executer dans mon code lua avec mon executor Codex. donc quand je clique sur le bouton, l'action se lance.  
+Voila le but du jeu : tu clique sur un bouton et tu as un oeuf qui apparait devant toi. ensuite tu peux l'acheter ou appuyer encore une fois pour passer au suivant. ensuite tu peux poser l'oeuf sur un slot pour pouvoir ensuite l'ouvrir. il y a un temps d'attente pour ouvrir l'oeuf. donc ensuite tu as un brainrot que tu peux améliorer. quand tu ameliore, le brainrot donne plus d'argent. tous l'argent va dans une boite. puis on peut récupérer la boite pour la vendre a un bot. 
+je vais te donner les remoteEvents et je vais te donner une explication pour chaque remoteEvents/chemin ou poser des question sous cette forme : 
+explication : ""
+Remote : ""
+Question : ""
+donc commencons : 
+explication : "La on a l'oeuf qui est sur le convoyeur, il a un nom dans ses childs sous forme de EggbillBoard, le chemin complet vers l'oeuf est dans le path, mais voici vers le nom le nom du brainrot est 67 : workspace.CoreObjects.Eggs["67"]["67"].BillboardAttachment.EggBillboard.Frame.EggName"
+Path : "workspace.CoreObjects.Eggs"
+Question :""
+,
+explication : "la meme logique que pour le nom mais pour le prix"
+path : "workspace.CoreObjects.Eggs["67"]["67"].BillboardAttachment.EggBillboard.Frame.Price"
+,
+explication : "la meme logique que pour le nom mais pour la rareté"
+Path : "workspace.CoreObjects.Eggs["67"]["67"].BillboardAttachment.EggBillboard.Frame.rarity"
+,
+explication : "ce remoteEvents permet de changer l'oeuf sur le convoyeur"
+Remote : "game:GetService("ReplicatedStorage").Shared.Packages.Networker["RF/RequestEggSpawn"]:InvokeServer()"
+Question : ""
+,
+explication : "ici, on peut acheter l'oeuf sur le convoyeur. il faut le nom de l'oeuf"
+Remote : "game:GetService("ReplicatedStorage").Shared.Packages.Networker["RF/BuyEgg"]:InvokeServer("Nom de l'oeuf sur le convoyeur",1)"
+Question : ""
+,
+explication : "les oeufs doivent etre placé sur des stands, avec le path, on peut avoir la liste de tous les stands et savoir si ils sont occuper avec les propriétés la propriétés est "occupied" les stands vont de 1 a 50"
+Path : "workspace.CoreObjects.Plots.Plot1.Stands.Stand1" = au premier stands, si c'est "workspace.CoreObjects.Plots.Plot1.Stands.stand2" alors c'est le deuxieme stand."
+Question : ""
+,
+explication : "ce path dans les attributes permet de savoir ce que le joueur a dans les mains, c'est un className tool, donc il faut regarder dans workspace."pseodo du joueur", la liste des classe name et regarder  si il y a Egg alors c'est un oeuf, et si il y a Brainrot alors c'est un brainrot"
+Path : "workspace."pseodo du joueur""
+,
+explication : "permet de poser l'oeuf sur la position du stand, il faut que l'item soit dans la main du joueur. "
+Remote : "game:GetService("ReplicatedStorage").Shared.Packages.Networker["RF/PlaceEgg"]:InvokeServer("Stand3","Nom du brainrot en main")"
+
+
