@@ -555,6 +555,3 @@ RunService.Heartbeat:Connect(function()
     autoCollectBoxes()
     autoBuyEgg()
 end)
-
-print("✅ Auto Farm Script Loaded!")
-print("📱 GUI Created - Drag to move")
