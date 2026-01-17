@@ -303,7 +303,7 @@ game:GetService("ReplicatedStorage")
 
 ouvrir un oeuf 
 -----------------------------------------------
-game:GetService("ReplicatedStorage").Shared.Packages.Networker["RE/HatchEgg"]:FireServer("Stand10","Pipi Potato")
+game:GetService("ReplicatedStorage").Shared.Packages.Networker["RE/HatchEgg"]:FireServer("Stand10","nom du brainrot sur le stand")
 
 Rammasser la boite et vendre la box 
 ------------------------------------------------
