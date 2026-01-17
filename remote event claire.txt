@@ -5,7 +5,7 @@ explication : ""
 Remote : ""
 Question : ""
 donc commencons : 
-explication : "La on a l'oeuf qui est sur le convoyeur, il a un nom dans ses childs sous forme de EggbillBoard, le chemin complet vers l'oeuf est dans le path, mais voici vers le nom le nom du brainrot est 67 : workspace.CoreObjects.Eggs["67"]["67"].BillboardAttachment.EggBillboard.Frame.EggName"
+explication : "La on a l'oeuf qui est sur le convoyeur, il a un nom dans ses childs sous forme de EggbillBoard, le chemin complet vers l'oeuf est dans le path, mais voici vers le nom: workspace.CoreObjects.Eggs["Nom du brainrot"]["Nom du brainrot"].BillboardAttachment.EggBillboard.Frame.EggName"
 Path : "workspace.CoreObjects.Eggs"
 Question :""
 ,
@@ -32,5 +32,332 @@ Path : "workspace."pseodo du joueur""
 ,
 explication : "permet de poser l'oeuf sur la position du stand, il faut que l'item soit dans la main du joueur. "
 Remote : "game:GetService("ReplicatedStorage").Shared.Packages.Networker["RF/PlaceEgg"]:InvokeServer("Stand3","Nom du brainrot en main")"
+
+-------------------------------------------------------------------
+logique pour les infos des brainrot sur le convoyeur : 
+--------------------------------------------------------------------
+local eggsFolder = workspace.CoreObjects.Eggs
+
+for _, egg in ipairs(eggsFolder:GetChildren()) do
+	
+	local targetMesh = nil
+
+	-- Cherche le mesh qui contient BillboardAttachment
+	for _, child in ipairs(egg:GetChildren()) do
+		if child:FindFirstChild("BillboardAttachment") then
+			targetMesh = child
+			break
+		end
+	end
+
+	if not targetMesh then
+		warn("Aucun mesh avec BillboardAttachment pour", egg.Name)
+		continue
+	end
+
+	local billboardAttachment = targetMesh:FindFirstChild("BillboardAttachment")
+	local eggBillboard = billboardAttachment and billboardAttachment:FindFirstChild("EggBillboard")
+	local frame = eggBillboard and eggBillboard:FindFirstChild("Frame")
+
+	if not frame then continue end
+
+	-- TextLabels
+	local priceLabel = frame:FindFirstChild("Price")
+	local nameLabel = frame:FindFirstChild("EggName")
+	local rarityLabel = frame:FindFirstChild("Rarity")
+
+	local price = (priceLabel and priceLabel:IsA("TextLabel")) and priceLabel.Text or "N/A"
+	local eggName = (nameLabel and nameLabel:IsA("TextLabel")) and nameLabel.Text or "N/A"
+	local rarity = (rarityLabel and rarityLabel:IsA("TextLabel")) and rarityLabel.Text or "N/A"
+end
+
+end
+-----------------------------------------------------------
+Changer l'oeuf qui est sur le convoyeur :
+-----------------------------------------------------------
+game:GetService("ReplicatedStorage")
+	.Shared.Packages.Networker["RF/RequestEggSpawn"]
+	:InvokeServer()
+-----------------------------------------------------------
+Acheter l'oeuf sur le convoyeur fonctionne seulement si on a "frame.eggName.texte" donc la logique pour les infos convoyeur 
+--------------------------------------------------------------------------
+local eggName = frame.EggName.Text
+
+game:GetService("ReplicatedStorage")
+	.Shared.Packages.Networker["RF/BuyEgg"]
+	:InvokeServer(eggName, 1)
+----------------------------------------------------------
+Avoir l'information sur quels sont les stands vides.
+---------------------------------------------------------- 
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlotsFolder = workspace.CoreObjects.Plots
+
+local function getMyPlot()
+    for _, plot in ipairs(PlotsFolder:GetChildren()) do
+        local owner = plot:GetAttribute("Owner")
+        local ownerValue = plot:FindFirstChild("Owner")
+        
+        if (owner == LocalPlayer.Name or owner == LocalPlayer.UserId) or 
+           (ownerValue and (ownerValue.Value == LocalPlayer.Name or ownerValue.Value == LocalPlayer.UserId)) then
+            return plot
+        end
+    end
+end
+
+local myPlot = getMyPlot()
+if not myPlot then
+    warn("Aucun plot trouvé")
+    return
+end
+
+local standsFolder = myPlot:FindFirstChild("Stands")
+if not standsFolder then
+    warn("Aucun dossier Stands")
+    return
+end
+
+print("=== MES STANDS ===")
+for _, stand in ipairs(standsFolder:GetChildren()) do
+    local occupied = stand:GetAttribute("Occupied")
+    local requirement = stand:GetAttribute("Requirement")
+    
+    local status = occupied and "Occupé" or "Libre"
+    local req = requirement or "Aucun"
+    
+    print(stand.Name .. " | " .. status .. " | Requirement: " .. req)
+end
+print("==================")
+
+-----------------------------------------------------------------------------------------------------------
+Information sur tous les stands.
+-----------------------------------------------------------------------------------------------------------
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Plots = workspace.CoreObjects.Plots
+
+-- get my plot
+local myPlot
+for _, p in ipairs(Plots:GetChildren()) do
+    local o, ov = p:GetAttribute("Owner"), p:FindFirstChild("Owner")
+    if o == LocalPlayer.Name or o == LocalPlayer.UserId
+    or (ov and (ov.Value == LocalPlayer.Name or ov.Value == LocalPlayer.UserId)) then
+        myPlot = p
+        break
+    end
+end
+if not myPlot then return warn("No plot") end
+
+local stands = myPlot:FindFirstChild("Stands")
+if not stands then return warn("No stands") end
+
+local function readStand(stand)
+    local timer = "N/A"
+
+    for _, d in ipairs(stand:GetDescendants()) do
+        if d:IsA("TextLabel") and d.Name == "Timer" then
+            timer = d.Text
+            break
+        end
+    end
+
+    local brainrot = stand:FindFirstChildOfClass("Model")
+    local bb = brainrot
+        and brainrot:FindFirstChild("HumanoidRootPart")
+        and brainrot.HumanoidRootPart:FindFirstChild("BrainrotBillboard")
+
+    local upgrade = stand:FindFirstChild("UpgradeButton")
+        and stand.UpgradeButton:FindFirstChild("UpgradeGUI")
+        and stand.UpgradeButton.UpgradeGUI:FindFirstChild("Upgrade")
+
+    print("----", stand.Name, "----")
+
+    if bb then
+        print("Brainrot:", brainrot.Name)
+        print("Rarity:", bb.Rarity.Text)
+        print("Gain/sec:", bb.Multiplier.Text)
+    elseif timer ~= "N/A" then
+        print("Egg")
+    else
+        print("Empty")
+    end
+
+    print("Timer:", timer)
+
+    if upgrade then
+        print("Upgrade Level:", upgrade.Level.Text)
+        print("Upgrade Price:", upgrade.Price.Text)
+    end
+end
+
+-- 🚀 scan all stands
+for _, stand in ipairs(stands:GetChildren()) do
+    readStand(stand)
+end
+-----------------------------------------------------------------------------------------
+placer un oeuf sur une zone vide.
+-----------------------------------------------------------------------------------------
+-- =========================
+-- 🔧 Services
+-- =========================
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+local Backpack = LocalPlayer.Backpack
+
+local Networker = ReplicatedStorage.Shared.Packages.Networker
+local PlaceEggRF = Networker["RF/PlaceEgg"]
+
+-- =========================
+-- 📊 Récupération Rebirth
+-- =========================
+local ClientUtils = require(ReplicatedStorage.Client.Modules.ClientUtils)
+local ProfileData = ClientUtils.ProfileData
+
+local rebirths = 0
+if ProfileData and ProfileData.leaderstats and ProfileData.leaderstats.Rebirths then
+    rebirths = ProfileData.leaderstats.Rebirths
+else
+    warn("Impossible de récupérer les Rebirths")
+end
+
+-- =========================
+-- 🏠 Récupération du plot
+-- =========================
+local Plots = workspace.CoreObjects.Plots
+local myPlot
+
+for _, p in ipairs(Plots:GetChildren()) do
+    local o, ov = p:GetAttribute("Owner"), p:FindFirstChild("Owner")
+    if o == LocalPlayer.Name or o == LocalPlayer.UserId
+    or (ov and (ov.Value == LocalPlayer.Name or ov.Value == LocalPlayer.UserId)) then
+        myPlot = p
+        break
+    end
+end
+
+if not myPlot then
+    warn("No plot")
+    return
+end
+
+local standsFolder = myPlot:FindFirstChild("Stands")
+if not standsFolder then
+    warn("No stands")
+    return
+end
+
+-- =========================
+-- 📦 Trouver un oeuf
+-- =========================
+local function findEggTool()
+    for _, tool in ipairs(Backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local attrs = tool:GetAttributes()
+            if attrs and attrs.Egg == true then
+                return tool
+            end
+        end
+    end
+end
+
+
+-- =========================
+-- 🖐️ Équiper l'oeuf
+-- =========================
+local function equipTool(tool)
+    if tool and LocalPlayer.Character then
+        tool.Parent = LocalPlayer.Character
+        task.wait(0.15)
+    end
+end
+
+-- =========================
+-- 🔢 Vérifier numéro de stand
+-- =========================
+local function isValidStandName(stand)
+    -- Doit matcher exactement "Stand<number>"
+    local number = stand.Name:match("^Stand(%d+)$")
+    if not number then
+        return false
+    end
+
+    number = tonumber(number)
+    if not number then
+        return false
+    end
+
+    return number <= 50
+end
+
+-- =========================
+-- 🔓 Vérifier accès stand
+-- =========================
+local function canUseStand(stand)
+    local requirement = stand:GetAttribute("Requirement")
+
+    if requirement == nil then
+        return true
+    end
+
+    if type(requirement) == "number" then
+        return requirement <= rebirths
+    end
+
+    return false
+end
+
+-- =========================
+-- 🧠 Vérifier stand vide
+-- =========================
+local function isStandEmpty(stand)
+    if stand:FindFirstChildOfClass("Model") then
+        return false
+    end
+
+    for _, d in ipairs(stand:GetDescendants()) do
+        if d:IsA("TextLabel") and d.Name == "Timer" then
+            return false
+        end
+    end
+
+    return true
+end
+
+-- =========================
+-- 🎯 Trouver stand valide
+-- =========================
+local function findEmptyUsableStand()
+    for _, stand in ipairs(standsFolder:GetChildren()) do
+        if isValidStandName(stand)
+        and canUseStand(stand)
+        and isStandEmpty(stand) then
+            return stand
+        end
+    end
+end
+
+-- =========================
+-- 🚀 EXECUTION
+-- =========================
+local eggTool = findEggTool()
+if not eggTool then
+    warn("Aucun oeuf dans l'inventaire")
+    return
+end
+
+local stand = findEmptyUsableStand()
+if not stand then
+    warn("Aucun stand valide (≤50), accessible et vide")
+    return
+end
+
+equipTool(eggTool)
+
+PlaceEggRF:InvokeServer(
+    stand.Name,
+    eggTool.Name
+)
 
 

@@ -38,7 +38,7 @@ comment avoir la valeur de la box ?
 
 
 permet de vendre la box, 
-local Remote = game:GetService("ReplicatedStorage").Shared.Packages.Networker.RE/BoxSold
+game:GetService("ReplicatedStorage").Shared.Packages.Networker["RE/BoxSold"]:FireServer()
 
 
 permet d'avoir l'info sur le cash du joueur : 
