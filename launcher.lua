@@ -30,7 +30,17 @@ local Config = {
     AutoBuyEgg = false,
     BoxCollectDelay = 30,
     ActionDelay = 0.5,
-    UpgradeDelay = 10
+    UpgradeDelay = 10,
+    TargetRarity = "Legendary"
+}
+
+local RarityPriority = {
+    ["Legendary"] = 6,
+    ["Epic"] = 5,
+    ["Rare"] = 4,
+    ["Uncommon"] = 3,
+    ["Common"] = 2,
+    ["Basic"] = 1
 }
 
 local LastBoxCollect = 0
@@ -173,21 +183,45 @@ local function readStandContent(stand)
     return data
 end
 
-local function parseGainPerSec(gainText)
-    if not gainText then return 0 end
-    
-    local num = gainText:match("([%d%.]+)")
-    num = tonumber(num) or 0
-    
-    if gainText:find("K") then
-        num = num * 1000
-    elseif gainText:find("M") then
-        num = num * 1000000
-    elseif gainText:find("B") then
-        num = num * 1000000000
+local function scanEggs(eggsFolder)
+    local results = {}
+
+    for _, egg in ipairs(eggsFolder:GetChildren()) do
+        local info = {
+            EggModel = egg,
+            Name = "Pas d'œuf",
+            Price = "N/A",
+            Rarity = "N/A"
+        }
+
+        local targetMesh = nil
+        for _, child in ipairs(egg:GetChildren()) do
+            if child:FindFirstChild("BillboardAttachment") then
+                targetMesh = child
+                break
+            end
+        end
+
+        if targetMesh then
+            local billboardAttachment = targetMesh:FindFirstChild("BillboardAttachment")
+            local eggBillboard = billboardAttachment and billboardAttachment:FindFirstChild("EggBillboard")
+            local frame = eggBillboard and eggBillboard:FindFirstChild("Frame")
+
+            if frame then
+                local priceLabel = frame:FindFirstChild("Price")
+                local nameLabel = frame:FindFirstChild("EggName")
+                local rarityLabel = frame:FindFirstChild("Rarity")
+
+                info.Name = (nameLabel and nameLabel:IsA("TextLabel") and nameLabel.Text) or "Pas d'œuf"
+                info.Price = (priceLabel and priceLabel:IsA("TextLabel") and priceLabel.Text) or "N/A"
+                info.Rarity = (rarityLabel and rarityLabel:IsA("TextLabel") and rarityLabel.Text) or "N/A"
+            end
+        end
+
+        table.insert(results, info)
     end
-    
-    return num
+
+    return results
 end
 
 -- ===============================================
@@ -340,6 +374,18 @@ local function autoBuyEgg()
         return
     end
     
+    local bestEgg = findBestEgg()
+    
+    if bestEgg and bestEgg.Rarity ~= "N/A" then
+        local targetPriority = RarityPriority[Config.TargetRarity] or 0
+        local eggPriority = RarityPriority[bestEgg.Rarity] or 0
+        
+        if eggPriority >= targetPriority then
+            LastBuyEgg = currentTime
+            return
+        end
+    end
+    
     pcall(function()
         RequestEggSpawnRF:InvokeServer()
     end)
@@ -367,7 +413,7 @@ MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Position = UDim2.new(0.02, 0, 0.3, 0)
-MainFrame.Size = UDim2.new(0, 300, 0, 400)
+MainFrame.Size = UDim2.new(0, 300, 0, 450)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
@@ -447,7 +493,13 @@ local function createToggle(name, configKey, order)
     end)
 end
 
-local function createSlider(name, configKey, min, max, order)
+createToggle("Auto Upgrade", "AutoUpgrade", 1)
+createToggle("Auto Hatch", "AutoHatch", 2)
+createToggle("Auto Place Egg", "AutoPlaceEgg", 3)
+createToggle("Auto Collect Boxes", "AutoCollectBoxes", 4)
+createToggle("Auto Buy Egg", "AutoBuyEgg", 5)
+createDropdown("Target Rarity", "TargetRarity", {"Legendary", "Epic", "Rare", "Uncommon", "Common", "Basic"}, 6)
+createSlider("Box Delay", "BoxCollectDelay", 1, 120, 7)
     local SliderFrame = Instance.new("Frame")
     local SliderLabel = Instance.new("TextLabel")
     local SliderBar = Instance.new("Frame")
@@ -537,12 +589,102 @@ local function createSlider(name, configKey, min, max, order)
     end)
 end
 
-createToggle("Auto Upgrade", "AutoUpgrade", 1)
-createToggle("Auto Hatch", "AutoHatch", 2)
-createToggle("Auto Place Egg", "AutoPlaceEgg", 3)
-createToggle("Auto Collect Boxes", "AutoCollectBoxes", 4)
-createToggle("Auto Buy Egg", "AutoBuyEgg", 5)
-createSlider("Box Delay", "BoxCollectDelay", 1, 120, 6)
+local function createDropdown(name, configKey, options, order)
+    local DropdownFrame = Instance.new("Frame")
+    local DropdownLabel = Instance.new("TextLabel")
+    local DropdownButton = Instance.new("TextButton")
+    local ButtonCorner = Instance.new("UICorner")
+    local DropdownList = Instance.new("Frame")
+    local ListCorner = Instance.new("UICorner")
+    local ListLayout = Instance.new("UIListLayout")
+    
+    DropdownFrame.Name = name .. "Frame"
+    DropdownFrame.Parent = ContentFrame
+    DropdownFrame.BackgroundTransparency = 1
+    DropdownFrame.Size = UDim2.new(1, 0, 0, 40)
+    DropdownFrame.LayoutOrder = order
+    DropdownFrame.ClipsDescendants = false
+    
+    DropdownLabel.Name = "Label"
+    DropdownLabel.Parent = DropdownFrame
+    DropdownLabel.BackgroundTransparency = 1
+    DropdownLabel.Size = UDim2.new(0.4, 0, 1, 0)
+    DropdownLabel.Font = Enum.Font.Gotham
+    DropdownLabel.Text = name
+    DropdownLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownLabel.TextSize = 14
+    DropdownLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    DropdownButton.Name = "Button"
+    DropdownButton.Parent = DropdownFrame
+    DropdownButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    DropdownButton.Position = UDim2.new(0.4, 0, 0, 0)
+    DropdownButton.Size = UDim2.new(0.6, 0, 1, 0)
+    DropdownButton.Font = Enum.Font.Gotham
+    DropdownButton.Text = Config[configKey]
+    DropdownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownButton.TextSize = 14
+    DropdownButton.ZIndex = 2
+    
+    ButtonCorner.CornerRadius = UDim.new(0, 8)
+    ButtonCorner.Parent = DropdownButton
+    
+    DropdownList.Name = "List"
+    DropdownList.Parent = DropdownFrame
+    DropdownList.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    DropdownList.Position = UDim2.new(0.4, 0, 1, 5)
+    DropdownList.Size = UDim2.new(0.6, 0, 0, 0)
+    DropdownList.Visible = false
+    DropdownList.ZIndex = 10
+    
+    ListCorner.CornerRadius = UDim.new(0, 8)
+    ListCorner.Parent = DropdownList
+    
+    ListLayout.Parent = DropdownList
+    ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ListLayout.Padding = UDim.new(0, 2)
+    
+    local isOpen = false
+    
+    for i, option in ipairs(options) do
+        local OptionButton = Instance.new("TextButton")
+        OptionButton.Name = option
+        OptionButton.Parent = DropdownList
+        OptionButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        OptionButton.Size = UDim2.new(1, 0, 0, 30)
+        OptionButton.Font = Enum.Font.Gotham
+        OptionButton.Text = option
+        OptionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        OptionButton.TextSize = 13
+        OptionButton.ZIndex = 11
+        
+        local OptionCorner = Instance.new("UICorner")
+        OptionCorner.CornerRadius = UDim.new(0, 6)
+        OptionCorner.Parent = OptionButton
+        
+        OptionButton.MouseButton1Click:Connect(function()
+            Config[configKey] = option
+            DropdownButton.Text = option
+            DropdownList.Visible = false
+            isOpen = false
+        end)
+        
+        OptionButton.MouseEnter:Connect(function()
+            OptionButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        end)
+        
+        OptionButton.MouseLeave:Connect(function()
+            OptionButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        end)
+    end
+    
+    DropdownList.Size = UDim2.new(0.6, 0, 0, #options * 32)
+    
+    DropdownButton.MouseButton1Click:Connect(function()
+        isOpen = not isOpen
+        DropdownList.Visible = isOpen
+    end)
+end
 
 -- ===============================================
 -- 🔄 MAIN LOOP
@@ -555,6 +697,3 @@ RunService.Heartbeat:Connect(function()
     autoCollectBoxes()
     autoBuyEgg()
 end)
-
-print("✅ Auto Farm Script Loaded!")
-print("📱 GUI Created - Drag to move")
