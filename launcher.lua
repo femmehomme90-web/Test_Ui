@@ -29,10 +29,15 @@ local Config = {
     AutoCollectBoxes = false,
     AutoBuyEgg = false,
     BoxCollectDelay = 30,
-    ActionDelay = 0.5
+    ActionDelay = 0.5,
+    UpgradeDelay = 10
 }
 
 local LastBoxCollect = 0
+local LastUpgrade = 0
+local LastHatch = 0
+local LastPlaceEgg = 0
+local LastBuyEgg = 0
 
 -- ===============================================
 -- 🔧 UTILITY FUNCTIONS
@@ -192,6 +197,11 @@ end
 local function autoUpgrade()
     if not Config.AutoUpgrade then return end
     
+    local currentTime = tick()
+    if currentTime - LastUpgrade < Config.UpgradeDelay then
+        return
+    end
+    
     local myPlot = getMyPlot()
     if not myPlot then return end
     
@@ -219,20 +229,23 @@ local function autoUpgrade()
     end)
     
     for _, info in ipairs(brainrotStands) do
-        local success, result = pcall(function()
-            return UpgradeBrainrotRF:InvokeServer(info.Stand.Name)
+        pcall(function()
+            UpgradeBrainrotRF:InvokeServer(info.Stand.Name)
         end)
-        
-        if success then
-            print("✅ Upgraded:", info.Stand.Name, "| Gain:", info.Data.GainPerSec)
-        end
         
         task.wait(Config.ActionDelay)
     end
+    
+    LastUpgrade = currentTime
 end
 
 local function autoHatch()
     if not Config.AutoHatch then return end
+    
+    local currentTime = tick()
+    if currentTime - LastHatch < Config.ActionDelay then
+        return
+    end
     
     local myPlot = getMyPlot()
     if not myPlot then return end
@@ -253,23 +266,26 @@ local function autoHatch()
                         brainrotName = "Unknown"
                     end
                     
-                    local success = pcall(function()
+                    pcall(function()
                         HatchEggRE:FireServer(stand.Name, brainrotName)
                     end)
-                    
-                    if success then
-                        print("🥚 Hatched egg on:", stand.Name)
-                    end
                     
                     task.wait(Config.ActionDelay)
                 end
             end
         end
     end
+    
+    LastHatch = currentTime
 end
 
 local function autoPlaceEgg()
     if not Config.AutoPlaceEgg then return end
+    
+    local currentTime = tick()
+    if currentTime - LastPlaceEgg < Config.ActionDelay then
+        return
+    end
     
     local eggTool = findEggTool()
     if not eggTool then return end
@@ -287,14 +303,11 @@ local function autoPlaceEgg()
     
     equipTool(eggTool)
     
-    local success = pcall(function()
+    pcall(function()
         PlaceEggRF:InvokeServer(stand.Name, eggTool.Name)
     end)
     
-    if success then
-        print("🥚 Placed egg:", eggTool.Name, "→", stand.Name)
-    end
-    
+    LastPlaceEgg = currentTime
     task.wait(Config.ActionDelay)
 end
 
@@ -306,34 +319,32 @@ local function autoCollectBoxes()
         return
     end
     
-    local success = pcall(function()
+    pcall(function()
         PickupBoxesRE:FireServer()
     end)
     
-    if success then
-        print("📦 Picked up box")
-        task.wait(0.3)
-        
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-        task.wait(0.1)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-        
-        print("💰 Sold box")
-        LastBoxCollect = currentTime
-    end
+    task.wait(0.3)
+    
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+    task.wait(0.1)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+    
+    LastBoxCollect = currentTime
 end
 
 local function autoBuyEgg()
     if not Config.AutoBuyEgg then return end
     
-    local success = pcall(function()
+    local currentTime = tick()
+    if currentTime - LastBuyEgg < Config.ActionDelay then
+        return
+    end
+    
+    pcall(function()
         RequestEggSpawnRF:InvokeServer()
     end)
     
-    if success then
-        print("🛒 Requested new egg on conveyor")
-    end
-    
+    LastBuyEgg = currentTime
     task.wait(Config.ActionDelay)
 end
 
