@@ -465,7 +465,10 @@ local function autoBuyEgg()
     local eggInfo = getConveyorEggInfo()
     
     if not eggInfo then
-        warn("❌ Aucun œuf trouvé sur le convoyeur")
+        warn("❌ Aucun œuf trouvé sur le convoyeur → demande d'un nouvel œuf")
+        pcall(function()
+            RequestEggSpawnRF:InvokeServer()
+        end)
         LastBuyEgg = currentTime
         return
     end
@@ -479,6 +482,10 @@ local function autoBuyEgg()
         
         if success then
             print("✅ Œuf acheté:", eggInfo.Name, "| Rareté:", eggInfo.Rarity, "| Prix:", eggInfo.Price)
+            -- Demande un nouvel œuf après achat
+            pcall(function()
+                RequestEggSpawnRF:InvokeServer()
+            end)
             LastBuyEgg = currentTime
             task.wait(Config.ActionDelay)
         else
@@ -501,6 +508,7 @@ local function autoBuyEgg()
         task.wait(Config.ActionDelay)
     end
 end
+
 
 -- ===============================================
 -- 🎨 GUI CREATION
