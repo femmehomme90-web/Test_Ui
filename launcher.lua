@@ -247,49 +247,24 @@ local function autoHatch()
         return
     end
     
-    print("🔍 AutoHatch - Début du scan...")
-    
     local myPlot = getMyPlot()
-    if not myPlot then 
-        print("❌ Pas de plot trouvé")
-        LastHatch = currentTime
-        return 
-    end
+    if not myPlot then return end
     
     local standsFolder = getStandsFolder(myPlot)
-    if not standsFolder then 
-        print("❌ Pas de stands folder")
-        LastHatch = currentTime
-        return 
-    end
-    
-    local foundEgg = false
+    if not standsFolder then return end
     
     for _, stand in ipairs(standsFolder:GetChildren()) do
         if isValidStandName(stand) then
             local state = getStandState(stand)
             if state == "Egg" then
-                foundEgg = true
                 local data = readStandContent(stand)
-                print("🥚 Oeuf sur " .. stand.Name .. " | Temps: " .. (data.Timer or "?"))
-                
                 if data.Timer and (data.Timer == "0s" or data.Timer == "Ready" or data.Timer:find("^0")) then
-                    local brainrotName = "Unknown"
-                    for _, desc in ipairs(stand:GetDescendants()) do
-                        if desc:IsA("TextLabel") and desc.Name == "BrainrotName" then
-                            brainrotName = desc.Text
-                            break
-                        end
+                    local brainrotName = stand:FindFirstChildOfClass("Model")
+                    if brainrotName then
+                        brainrotName = brainrotName.Name
+                    else
+                        brainrotName = "Unknown"
                     end
-                    
-                    if brainrotName == "Unknown" then
-                        local attr = stand:GetAttribute("BrainrotName")
-                        if attr then
-                            brainrotName = attr
-                        end
-                    end
-                    
-                    print("🚀 Ouverture: " .. stand.Name .. " | Brainrot: " .. brainrotName)
                     
                     pcall(function()
                         HatchEggRE:FireServer(stand.Name, brainrotName)
@@ -299,10 +274,6 @@ local function autoHatch()
                 end
             end
         end
-    end
-    
-    if not foundEgg then
-        print("ℹ️ Aucun oeuf trouvé")
     end
     
     LastHatch = currentTime
