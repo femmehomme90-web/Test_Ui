@@ -240,18 +240,28 @@ local function autoUpgrade()
 end
 
 local function autoHatch()
-    if not Config.AutoHatch then return end
+    print("🔍 AutoHatch appelé - Config.AutoHatch =", Config.AutoHatch)
+    
+    if not Config.AutoHatch then 
+        print("❌ AutoHatch désactivé, on sort")
+        return 
+    end
+    
+    print("✅ AutoHatch activé, on continue...")
     
     local currentTime = tick()
     if currentTime - LastHatch < Config.ActionDelay then
+        print("⏳ Trop tôt, on attend encore", Config.ActionDelay - (currentTime - LastHatch), "secondes")
         return
     end
     
+    print("🎯 Recherche du plot...")
     local myPlot = getMyPlot()
     if not myPlot then 
         print("❌ AutoHatch: Pas de plot trouvé")
         return 
     end
+    print("✅ Plot trouvé!")
     
     local standsFolder = getStandsFolder(myPlot)
     if not standsFolder then 
@@ -303,7 +313,6 @@ local function autoHatch()
     
     LastHatch = currentTime
 end
-
 
 local function autoPlaceEgg()
     if not Config.AutoPlaceEgg then return end
