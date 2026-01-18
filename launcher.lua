@@ -358,20 +358,20 @@ end
 -- ===============================================
 
 local RarityConfig = {
-    Admin = false,
+    Admin = true,
     Common = false,
-    Divine = false,
+    Divine = true,
     Epic = false,
-    Event = false,
-    Exclusive = false,
-    Exotic = false,
-    GOD = false,
+    Event = true,
+    Exclusive = true,
+    Exotic = true,
+    GOD = true,
     Legendary = false,
-    Limited = false,
+    Limited = true,
     Mythic = false,
-    OG = false,
+    OG = true,
     Rare = false,
-    Secret = false,
+    Secret = true,
     Uncommon = false
 }
 
@@ -467,8 +467,6 @@ local function autoBuyEgg()
     end
     
     -- Valeur du brainrot actuel (à adapter selon ton code)
-    local priceLabel = frame:FindFirstChild("Price")
-    local price = (priceLabel and priceLabel:IsA("TextLabel")) and priceLabel.Text or "N/A"
     local priceNumber = tonumber(eggInfo.Price:gsub("[^0-9]", "")) or 0
     
     
