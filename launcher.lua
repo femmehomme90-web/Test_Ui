@@ -248,29 +248,54 @@ local function autoHatch()
     end
     
     local myPlot = getMyPlot()
-    if not myPlot then return end
+    if not myPlot then 
+        print("❌ AutoHatch: Pas de plot trouvé")
+        return 
+    end
     
     local standsFolder = getStandsFolder(myPlot)
-    if not standsFolder then return end
+    if not standsFolder then 
+        print("❌ AutoHatch: Pas de stands folder")
+        return 
+    end
     
     for _, stand in ipairs(standsFolder:GetChildren()) do
         if isValidStandName(stand) then
             local state = getStandState(stand)
             if state == "Egg" then
                 local data = readStandContent(stand)
+                print("🥚 Oeuf trouvé sur " .. stand.Name)
+                print("⏱️ Temps restant: " .. (data.Timer or "inconnu"))
+                
                 if data.Timer and (data.Timer == "0s" or data.Timer == "Ready" or data.Timer:find("^0")) then
-                    local brainrotName = stand:FindFirstChildOfClass("Model")
-                    if brainrotName then
-                        brainrotName = brainrotName.Name
-                    else
-                        brainrotName = "Unknown"
+                    -- Chercher le nom du brainrot dans les descendants du stand
+                    local brainrotName = "Unknown"
+                    for _, desc in ipairs(stand:GetDescendants()) do
+                        if desc:IsA("TextLabel") and desc.Name == "BrainrotName" then
+                            brainrotName = desc.Text
+                            break
+                        end
                     end
+                    
+                    -- Si pas trouvé, chercher dans les attributs
+                    if brainrotName == "Unknown" then
+                        local attr = stand:GetAttribute("BrainrotName")
+                        if attr then
+                            brainrotName = attr
+                        end
+                    end
+                    
+                    print("🎯 Stand: " .. stand.Name)
+                    print("🧠 Nom brainrot: " .. brainrotName)
+                    print("🚀 Ouverture de l'oeuf...")
                     
                     pcall(function()
                         HatchEggRE:FireServer(stand.Name, brainrotName)
                     end)
                     
                     task.wait(Config.ActionDelay)
+                else
+                    print("⏳ Pas encore prêt")
                 end
             end
         end
