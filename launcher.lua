@@ -470,8 +470,14 @@ local function autoBuyEgg()
     local priceNumber = tonumber(eggInfo.Price:gsub("[^0-9]", "")) or 0
     
     
-    -- Comparaison cash vs brainrot
-    local ratio = cash / priceNumber
+    local cashNumber = tonumber(cash)
+    local priceNumber = tonumber(priceNumber)
+
+    if not cashNumber or not priceNumber or priceNumber == 0 then
+        return
+    end
+
+    local ratio = cashNumber / priceNumber
     
     if ratio < 0.6 then
         -- Cash trop faible (>40% en dessous) → on change d'œuf
