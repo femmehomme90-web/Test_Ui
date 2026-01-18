@@ -240,45 +240,40 @@ local function autoUpgrade()
 end
 
 local function autoHatch()
-    print("🔍 AutoHatch appelé - Config.AutoHatch =", Config.AutoHatch)
-    
-    if not Config.AutoHatch then 
-        print("❌ AutoHatch désactivé, on sort")
-        return 
-    end
-    
-    print("✅ AutoHatch activé, on continue...")
+    if not Config.AutoHatch then return end
     
     local currentTime = tick()
     if currentTime - LastHatch < Config.ActionDelay then
-        print("⏳ Trop tôt, on attend encore", Config.ActionDelay - (currentTime - LastHatch), "secondes")
         return
     end
     
-    print("🎯 Recherche du plot...")
+    print("🔍 AutoHatch - Début du scan...")
+    
     local myPlot = getMyPlot()
     if not myPlot then 
-        print("❌ AutoHatch: Pas de plot trouvé")
+        print("❌ Pas de plot trouvé")
+        LastHatch = currentTime
         return 
     end
-    print("✅ Plot trouvé!")
     
     local standsFolder = getStandsFolder(myPlot)
     if not standsFolder then 
-        print("❌ AutoHatch: Pas de stands folder")
+        print("❌ Pas de stands folder")
+        LastHatch = currentTime
         return 
     end
+    
+    local foundEgg = false
     
     for _, stand in ipairs(standsFolder:GetChildren()) do
         if isValidStandName(stand) then
             local state = getStandState(stand)
             if state == "Egg" then
+                foundEgg = true
                 local data = readStandContent(stand)
-                print("🥚 Oeuf trouvé sur " .. stand.Name)
-                print("⏱️ Temps restant: " .. (data.Timer or "inconnu"))
+                print("🥚 Oeuf sur " .. stand.Name .. " | Temps: " .. (data.Timer or "?"))
                 
                 if data.Timer and (data.Timer == "0s" or data.Timer == "Ready" or data.Timer:find("^0")) then
-                    -- Chercher le nom du brainrot dans les descendants du stand
                     local brainrotName = "Unknown"
                     for _, desc in ipairs(stand:GetDescendants()) do
                         if desc:IsA("TextLabel") and desc.Name == "BrainrotName" then
@@ -287,7 +282,6 @@ local function autoHatch()
                         end
                     end
                     
-                    -- Si pas trouvé, chercher dans les attributs
                     if brainrotName == "Unknown" then
                         local attr = stand:GetAttribute("BrainrotName")
                         if attr then
@@ -295,20 +289,20 @@ local function autoHatch()
                         end
                     end
                     
-                    print("🎯 Stand: " .. stand.Name)
-                    print("🧠 Nom brainrot: " .. brainrotName)
-                    print("🚀 Ouverture de l'oeuf...")
+                    print("🚀 Ouverture: " .. stand.Name .. " | Brainrot: " .. brainrotName)
                     
                     pcall(function()
                         HatchEggRE:FireServer(stand.Name, brainrotName)
                     end)
                     
                     task.wait(Config.ActionDelay)
-                else
-                    print("⏳ Pas encore prêt")
                 end
             end
         end
+    end
+    
+    if not foundEgg then
+        print("ℹ️ Aucun oeuf trouvé")
     end
     
     LastHatch = currentTime
