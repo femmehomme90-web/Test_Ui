@@ -243,19 +243,15 @@ local function autoHatch()
     if not Config.AutoHatch then return end
     
     local currentTime = tick()
-    if currentTime - LastHatch < Config.ActionDelay then return end
+    if currentTime - LastHatch < Config.ActionDelay then
+        return
+    end
     
     local myPlot = getMyPlot()
-    if not myPlot then
-        print("[AutoHatch] Plot introuvable")
-        return
-    end
+    if not myPlot then return end
     
     local standsFolder = getStandsFolder(myPlot)
-    if not standsFolder then
-        print("[AutoHatch] StandsFolder introuvable")
-        return
-    end
+    if not standsFolder then return end
     
     for _, stand in ipairs(standsFolder:GetChildren()) do
         if isValidStandName(stand) then
@@ -263,10 +259,12 @@ local function autoHatch()
             if state == "Egg" then
                 local data = readStandContent(stand)
                 if data.Timer and (data.Timer == "0s" or data.Timer == "Ready" or data.Timer:find("^0")) then
-                    local model = stand:FindFirstChildOfClass("Model")
-                    local brainrotName = model and model.Name or "Unknown"
-                    
-                    print("[AutoHatch] Hatch :", stand.Name, "|", brainrotName)
+                    local brainrotName = stand:FindFirstChildOfClass("Model")
+                    if brainrotName then
+                        brainrotName = brainrotName.Name
+                    else
+                        brainrotName = "Unknown"
+                    end
                     
                     pcall(function()
                         HatchEggRE:FireServer(stand.Name, brainrotName)
@@ -280,7 +278,6 @@ local function autoHatch()
     
     LastHatch = currentTime
 end
-
 
 
 local function autoPlaceEgg()
