@@ -353,6 +353,84 @@ local function autoCollectBoxes()
     LastBoxCollect = currentTime
 end
 
+-- ===============================================
+-- 📋 CONFIGURATION RARETÉ
+-- ===============================================
+
+local RarityConfig = {
+    Admin = false,
+    Common = false,
+    Divine = false,
+    Epic = false,
+    Event = false,
+    Exclusive = false,
+    Exotic = false,
+    GOD = false,
+    Legendary = false,
+    Limited = false,
+    Mythic = false,
+    OG = false,
+    Rare = false,
+    Secret = false,
+    Uncommon = false
+}
+
+-- ===============================================
+-- 🔧 UTILITY FUNCTIONS - CONVOYEUR
+-- ===============================================
+
+local function getConveyorEggInfo()
+    local eggsFolder = workspace.CoreObjects.Eggs
+    
+    for _, egg in ipairs(eggsFolder:GetChildren()) do
+        local targetMesh = nil
+        
+        -- Cherche le mesh qui contient BillboardAttachment
+        for _, child in ipairs(egg:GetChildren()) do
+            if child:FindFirstChild("BillboardAttachment") then
+                targetMesh = child
+                break
+            end
+        end
+        
+        if not targetMesh then
+            continue
+        end
+        
+        local billboardAttachment = targetMesh:FindFirstChild("BillboardAttachment")
+        local eggBillboard = billboardAttachment and billboardAttachment:FindFirstChild("EggBillboard")
+        local frame = eggBillboard and eggBillboard:FindFirstChild("Frame")
+        
+        if not frame then continue end
+        
+        -- Récupération des infos
+        local priceLabel = frame:FindFirstChild("Price")
+        local nameLabel = frame:FindFirstChild("EggName")
+        local rarityLabel = frame:FindFirstChild("Rarity")
+        
+        local price = (priceLabel and priceLabel:IsA("TextLabel")) and priceLabel.Text or "N/A"
+        local eggName = (nameLabel and nameLabel:IsA("TextLabel")) and nameLabel.Text or "N/A"
+        local rarity = (rarityLabel and rarityLabel:IsA("TextLabel")) and rarityLabel.Text or "N/A"
+        
+        -- Retourne les infos du premier œuf trouvé
+        return {
+            Name = eggName,
+            Rarity = rarity,
+            Price = price,
+            Frame = frame
+        }
+    end
+    
+    return nil
+end
+
+local function isRarityWanted(rarity)
+    -- Vérifie si la rareté est dans notre configuration
+    return RarityConfig[rarity] == true
+end
+
+local BuyEggRF = ReplicatedStorage.Shared.Packages.Networker["RF/BuyEgg"]
+
 local function autoBuyEgg()
     if not Config.AutoBuyEgg then return end
     
@@ -361,12 +439,67 @@ local function autoBuyEgg()
         return
     end
     
-    pcall(function()
-        RequestEggSpawnRF:InvokeServer()
-    end)
+    -- Vérifie si on a déjà un œuf dans l'inventaire
+    local eggTool = findEggTool()
+    if eggTool then
+        -- On a déjà un œuf, pas besoin d'en acheter
+        return
+    end
     
-    LastBuyEgg = currentTime
-    task.wait(Config.ActionDelay)
+    -- Vérifie qu'on a au moins un stand vide disponible
+    local myPlot = getMyPlot()
+    if not myPlot then return end
+    
+    local standsFolder = getStandsFolder(myPlot)
+    if not standsFolder then return end
+    
+    local rebirths = getRebirths()
+    local emptyStand = findEmptyUsableStand(standsFolder, rebirths)
+    
+    if not emptyStand then
+        -- Pas de stand vide, inutile d'acheter
+        return
+    end
+    
+    -- Récupère les infos de l'œuf sur le convoyeur
+    local eggInfo = getConveyorEggInfo()
+    
+    if not eggInfo then
+        warn("❌ Aucun œuf trouvé sur le convoyeur")
+        LastBuyEgg = currentTime
+        return
+    end
+    
+    -- Vérifie si la rareté est voulue
+    if isRarityWanted(eggInfo.Rarity) then
+        -- Achète l'œuf
+        local success, result = pcall(function()
+            return BuyEggRF:InvokeServer(eggInfo.Name, 1)
+        end)
+        
+        if success then
+            print("✅ Œuf acheté:", eggInfo.Name, "| Rareté:", eggInfo.Rarity, "| Prix:", eggInfo.Price)
+            LastBuyEgg = currentTime
+            task.wait(Config.ActionDelay)
+        else
+            warn("❌ Erreur lors de l'achat:", result)
+            LastBuyEgg = currentTime
+        end
+    else
+        -- Rareté non voulue, demande un nouvel œuf
+        local success, result = pcall(function()
+            return RequestEggSpawnRF:InvokeServer()
+        end)
+        
+        if success then
+            print("🔄 Œuf ignoré:", eggInfo.Name, "| Rareté:", eggInfo.Rarity, "→ Nouvel œuf demandé")
+        else
+            warn("❌ Erreur lors de la demande:", result)
+        end
+        
+        LastBuyEgg = currentTime
+        task.wait(Config.ActionDelay)
+    end
 end
 
 -- ===============================================
@@ -466,6 +599,85 @@ local function createToggle(name, configKey, order)
             ToggleButton.Text = "OFF"
         end
     end)
+end
+-- Séparateur
+local SeparatorFrame = Instance.new("Frame")
+SeparatorFrame.Name = "Separator"
+SeparatorFrame.Parent = ContentFrame
+SeparatorFrame.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+SeparatorFrame.BorderSizePixel = 0
+SeparatorFrame.Size = UDim2.new(1, 0, 0, 2)
+SeparatorFrame.LayoutOrder = 6
+
+local RarityTitle = Instance.new("TextLabel")
+RarityTitle.Name = "RarityTitle"
+RarityTitle.Parent = ContentFrame
+RarityTitle.BackgroundTransparency = 1
+RarityTitle.Size = UDim2.new(1, 0, 0, 30)
+RarityTitle.Font = Enum.Font.GothamBold
+RarityTitle.Text = "🎯 RARETÉS À ACHETER"
+RarityTitle.TextColor3 = Color3.fromRGB(100, 200, 255)
+RarityTitle.TextSize = 14
+RarityTitle.TextXAlignment = Enum.TextXAlignment.Left
+RarityTitle.LayoutOrder = 7
+
+-- Fonction pour créer un toggle de rareté (plus compact)
+local function createRarityToggle(rarityName, order)
+    local ToggleFrame = Instance.new("Frame")
+    local ToggleButton = Instance.new("TextButton")
+    local ButtonCorner = Instance.new("UICorner")
+    
+    ToggleFrame.Name = rarityName .. "Frame"
+    ToggleFrame.Parent = ContentFrame
+    ToggleFrame.BackgroundTransparency = 1
+    ToggleFrame.Size = UDim2.new(0.48, 0, 0, 35)
+    ToggleFrame.LayoutOrder = order
+    
+    ToggleButton.Name = "Button"
+    ToggleButton.Parent = ToggleFrame
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    ToggleButton.Size = UDim2.new(1, 0, 1, 0)
+    ToggleButton.Font = Enum.Font.Gotham
+    ToggleButton.Text = rarityName
+    ToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+    ToggleButton.TextSize = 12
+    
+    ButtonCorner.CornerRadius = UDim.new(0, 6)
+    ButtonCorner.Parent = ToggleButton
+    
+    ToggleButton.MouseButton1Click:Connect(function()
+        RarityConfig[rarityName] = not RarityConfig[rarityName]
+        
+        if RarityConfig[rarityName] then
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+            ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            ToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+        end
+    end)
+end
+
+-- Ajuste la taille du MainFrame pour contenir les raretés
+MainFrame.Size = UDim2.new(0, 300, 0, 650)
+
+-- Utilise un GridLayout pour les raretés
+local RarityGrid = Instance.new("UIGridLayout")
+RarityGrid.Parent = ContentFrame
+RarityGrid.SortOrder = Enum.SortOrder.LayoutOrder
+RarityGrid.CellPadding = UDim2.new(0, 5, 0, 5)
+RarityGrid.CellSize = UDim2.new(0.48, 0, 0, 35)
+RarityGrid.FillDirectionMaxCells = 2
+
+-- Change UIListLayout à LayoutOrder 99 pour qu'il ne s'applique pas aux raretés
+UIListLayout.Parent = nil
+
+-- Crée les toggles de rareté
+local rarities = {"Admin", "Common", "Divine", "Epic", "Event", "Exclusive", "Exotic", "GOD", 
+                  "Legendary", "Limited", "Mythic", "OG", "Rare", "Secret", "Uncommon"}
+
+for i, rarity in ipairs(rarities) do
+    createRarityToggle(rarity, 7 + i)
 end
 
 local function createSlider(name, configKey, min, max, order)
