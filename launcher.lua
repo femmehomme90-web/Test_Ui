@@ -264,7 +264,7 @@ local function autoHatch()
                 if data.Timer then
                     local timerLower = data.Timer:lower()
                     local isReady = timerLower == "0s" 
-                                 or timerLower == "ready" 
+                                 or timerLower == "READY!" 
                                  or timerLower:match("^0+s?$")
                                  or timerLower:match("^ready")
                     
