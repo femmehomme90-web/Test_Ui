@@ -240,24 +240,44 @@ local function autoUpgrade()
 end
 
 local function autoHatch()
-    if not Config.AutoHatch then return end
+    print("[AutoHatch] Début de la fonction")
+    
+    if not Config.AutoHatch then 
+        print("[AutoHatch] Config.AutoHatch est désactivé")
+        return 
+    end
     
     local currentTime = tick()
+    print("[AutoHatch] CurrentTime:", currentTime, "LastHatch:", LastHatch, "Différence:", currentTime - LastHatch)
+    
     if currentTime - LastHatch < Config.ActionDelay then
+        print("[AutoHatch] Délai non écoulé, abandon")
         return
     end
     
     local myPlot = getMyPlot()
+    print("[AutoHatch] Mon plot:", myPlot)
     if not myPlot then return end
     
     local standsFolder = getStandsFolder(myPlot)
+    print("[AutoHatch] Stands folder:", standsFolder)
     if not standsFolder then return end
     
+    local standsCount = 0
     for _, stand in ipairs(standsFolder:GetChildren()) do
+        standsCount = standsCount + 1
+        print("[AutoHatch] Stand #"..standsCount..":", stand.Name)
+        
         if isValidStandName(stand) then
+            print("[AutoHatch] Stand valide:", stand.Name)
+            
             local state = getStandState(stand)
+            print("[AutoHatch] État du stand:", state)
+            
             if state == "Egg" then
                 local data = readStandContent(stand)
+                print("[AutoHatch] Data timer:", data.Timer)
+                
                 if data.Timer and (data.Timer == "0s" or data.Timer == "Ready" or data.Timer:find("^0")) then
                     local brainrotName = stand:FindFirstChildOfClass("Model")
                     if brainrotName then
@@ -266,17 +286,27 @@ local function autoHatch()
                         brainrotName = "Unknown"
                     end
                     
+                    print("[AutoHatch] Tentative d'éclosion:", stand.Name, "Brainrot:", brainrotName)
+                    
                     pcall(function()
                         HatchEggRE:FireServer(stand.Name, brainrotName)
                     end)
                     
                     task.wait(Config.ActionDelay)
+                else
+                    print("[AutoHatch] Timer non prêt:", data.Timer)
                 end
+            else
+                print("[AutoHatch] État non-Egg ignoré")
             end
+        else
+            print("[AutoHatch] Stand invalide ignoré")
         end
     end
     
+    print("[AutoHatch] Total stands trouvés:", standsCount)
     LastHatch = currentTime
+    print("[AutoHatch] Fin de la fonction")
 end
 
 local function autoPlaceEgg()
