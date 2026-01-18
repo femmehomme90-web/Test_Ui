@@ -253,45 +253,45 @@ local function autoHatch()
     local standsFolder = getStandsFolder(myPlot)
     if not standsFolder then return end
     
+    -- Scan tous les stands pour trouver les œufs prêts
     for _, stand in ipairs(standsFolder:GetChildren()) do
         if isValidStandName(stand) then
-            local state = getStandState(stand)
+            -- Récupération du timer
+            local timer = nil
+            for _, d in ipairs(stand:GetDescendants()) do
+                if d:IsA("TextLabel") and d.Name == "Timer" then
+                    timer = d.Text
+                    break
+                end
+            end
             
-            if state == "Egg" then
-                local data = readStandContent(stand)
+            -- Vérification stricte du timer "READY!"
+            if timer and timer == "READY!" then
+                -- Récupération du nom du brainrot via le Model
+                local brainrotModel = stand:FindFirstChildOfClass("Model")
                 
-                -- Vérification améliorée du timer
-                if data.Timer then
-                    local timerLower = data.Timer:lower()
-                    local isReady = timerLower == "0s" 
-                                 or timerLower == "READY!" 
-                                 or timerLower:match("^0+s?$")
-                                 or timerLower:match("^ready")
+                if brainrotModel then
+                    local brainrotName = brainrotModel.Name
                     
-                    if isReady then
-                        -- Récupération du nom du brainrot
-                        local brainrotName = "Unknown"
-                        local brainrotModel = stand:FindFirstChildOfClass("Model")
-                        if brainrotModel then
-                            brainrotName = brainrotModel.Name
-                        end
-                        
-                        -- Tentative d'éclosion
-                        local success, err = pcall(function()
-                            HatchEggRE:FireServer(stand.Name, brainrotName)
-                        end)
-                        
-                        if not success then
-                            warn("Erreur lors de l'éclosion:", err)
-                        end
-                        
-                        -- Mise à jour du dernier hatch et attente
-                        LastHatch = tick()
-                        task.wait(Config.ActionDelay)
-                        
-                        -- On sort de la boucle pour éviter de hatch plusieurs œufs en même temps
-                        return
+                    -- Tentative d'éclosion
+                    local success, err = pcall(function()
+                        HatchEggRE:FireServer(stand.Name, brainrotName)
+                    end)
+                    
+                    if not success then
+                        warn("❌ Erreur lors de l'éclosion:", err)
+                    else
+                        print("✅ Œuf éclos:", stand.Name, "| Brainrot:", brainrotName)
                     end
+                    
+                    -- Mise à jour du dernier hatch et attente
+                    LastHatch = tick()
+                    task.wait(Config.ActionDelay)
+                    
+                    -- Sort de la boucle pour éviter de hatch plusieurs œufs simultanément
+                    return
+                else
+                    warn("⚠️ Timer READY! mais Model introuvable pour:", stand.Name)
                 end
             end
         end
