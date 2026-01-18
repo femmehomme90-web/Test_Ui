@@ -467,10 +467,13 @@ local function autoBuyEgg()
     end
     
     -- Valeur du brainrot actuel (à adapter selon ton code)
-    local brainrotValue = getBrainrotValue(emptyStand) -- fonction à créer ou existante qui renvoie le prix
+    local priceLabel = frame:FindFirstChild("Price")
+    local price = (priceLabel and priceLabel:IsA("TextLabel")) and priceLabel.Text or "N/A"
+    local priceNumber = tonumber(eggInfo.Price:gsub("[^0-9]", "")) or 0
+    
     
     -- Comparaison cash vs brainrot
-    local ratio = cash / brainrotValue
+    local ratio = cash / priceNumber
     
     if ratio < 0.6 then
         -- Cash trop faible (>40% en dessous) → on change d'œuf
