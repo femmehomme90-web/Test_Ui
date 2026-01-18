@@ -439,12 +439,12 @@ local function autoBuyEgg()
         return
     end
     
+    local player = game:GetService("Players").LocalPlayer
+    local cash = player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Cash") and player.leaderstats.Cash.Value or 0
+    
     -- Vérifie si on a déjà un œuf dans l'inventaire
     local eggTool = findEggTool()
-    if eggTool then
-        -- On a déjà un œuf, pas besoin d'en acheter
-        return
-    end
+    if eggTool then return end
     
     -- Vérifie qu'on a au moins un stand vide disponible
     local myPlot = getMyPlot()
@@ -455,19 +455,34 @@ local function autoBuyEgg()
     
     local rebirths = getRebirths()
     local emptyStand = findEmptyUsableStand(standsFolder, rebirths)
-    
-    if not emptyStand then
-        -- Pas de stand vide, inutile d'acheter
-        return
-    end
+    if not emptyStand then return end
     
     -- Récupère les infos de l'œuf sur le convoyeur
     local eggInfo = getConveyorEggInfo()
-    
     if not eggInfo then
         warn("❌ Aucun œuf trouvé sur le convoyeur → demande d'un nouvel œuf")
-        pcall(function()
-            RequestEggSpawnRF:InvokeServer()
+        pcall(function() RequestEggSpawnRF:InvokeServer() end)
+        LastBuyEgg = currentTime
+        return
+    end
+    
+    -- Valeur du brainrot actuel (à adapter selon ton code)
+    local brainrotValue = getBrainrotValue(emptyStand) -- fonction à créer ou existante qui renvoie le prix
+    
+    -- Comparaison cash vs brainrot
+    local ratio = cash / brainrotValue
+    
+    if ratio < 0.6 then
+        -- Cash trop faible (>40% en dessous) → on change d'œuf
+        print("💸 Cash insuffisant pour acheter le brainrot → nouvel œuf demandé")
+        pcall(function() RequestEggSpawnRF:InvokeServer() end)
+        LastBuyEgg = currentTime
+        return
+    elseif ratio < 0.8 then
+        -- Cash un peu faible (<20% en dessous) → attendre avant prochain achat
+        print("⏳ Cash un peu faible → attente 10s avant prochain ordre")
+        task.delay(10, function()
+            autoBuyEgg()
         end)
         LastBuyEgg = currentTime
         return
@@ -475,7 +490,6 @@ local function autoBuyEgg()
     
     -- Vérifie si la rareté est voulue
     if isRarityWanted(eggInfo.Rarity) then
-        -- Achète l'œuf
         local success, result = pcall(function()
             return BuyEggRF:InvokeServer(eggInfo.Name, 1)
         end)
@@ -483,9 +497,7 @@ local function autoBuyEgg()
         if success then
             print("✅ Œuf acheté:", eggInfo.Name, "| Rareté:", eggInfo.Rarity, "| Prix:", eggInfo.Price)
             -- Demande un nouvel œuf après achat
-            pcall(function()
-                RequestEggSpawnRF:InvokeServer()
-            end)
+            pcall(function() RequestEggSpawnRF:InvokeServer() end)
             LastBuyEgg = currentTime
             task.wait(Config.ActionDelay)
         else
@@ -497,13 +509,11 @@ local function autoBuyEgg()
         local success, result = pcall(function()
             return RequestEggSpawnRF:InvokeServer()
         end)
-        
         if success then
             print("🔄 Œuf ignoré:", eggInfo.Name, "| Rareté:", eggInfo.Rarity, "→ Nouvel œuf demandé")
         else
             warn("❌ Erreur lors de la demande:", result)
         end
-        
         LastBuyEgg = currentTime
         task.wait(Config.ActionDelay)
     end
