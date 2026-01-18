@@ -240,44 +240,72 @@ local function autoUpgrade()
 end
 
 local function autoHatch()
-    if not Config.AutoHatch then return end
+    if not Config.AutoHatch then
+        print("[AutoHatch] Désactivé dans la config")
+        return
+    end
     
     local currentTime = tick()
     if currentTime - LastHatch < Config.ActionDelay then
+        print("[AutoHatch] En attente du delay | Restant :", Config.ActionDelay - (currentTime - LastHatch))
         return
     end
     
     local myPlot = getMyPlot()
-    if not myPlot then return end
+    if not myPlot then
+        print("[AutoHatch] Aucun plot trouvé")
+        return
+    end
+    print("[AutoHatch] Plot trouvé :", myPlot.Name)
     
     local standsFolder = getStandsFolder(myPlot)
-    if not standsFolder then return end
+    if not standsFolder then
+        print("[AutoHatch] Aucun dossier de stands trouvé")
+        return
+    end
+    print("[AutoHatch] Nombre de stands :", #standsFolder:GetChildren())
     
     for _, stand in ipairs(standsFolder:GetChildren()) do
+        print("[AutoHatch] Analyse du stand :", stand.Name)
+        
         if isValidStandName(stand) then
             local state = getStandState(stand)
+            print("[AutoHatch] Stand valide | State :", state)
+            
             if state == "Egg" then
                 local data = readStandContent(stand)
+                print("[AutoHatch] Timer :", data and data.Timer)
+                
                 if data.Timer and (data.Timer == "0s" or data.Timer == "Ready" or data.Timer:find("^0")) then
-                    local brainrotName = stand:FindFirstChildOfClass("Model")
-                    if brainrotName then
-                        brainrotName = brainrotName.Name
+                    local brainrotModel = stand:FindFirstChildOfClass("Model")
+                    local brainrotName
+                    
+                    if brainrotModel then
+                        brainrotName = brainrotModel.Name
                     else
                         brainrotName = "Unknown"
                     end
+                    
+                    print("[AutoHatch] Hatch de l'œuf | Stand :", stand.Name, "| Brainrot :", brainrotName)
                     
                     pcall(function()
                         HatchEggRE:FireServer(stand.Name, brainrotName)
                     end)
                     
                     task.wait(Config.ActionDelay)
+                else
+                    print("[AutoHatch] Œuf pas prêt")
                 end
             end
+        else
+            print("[AutoHatch] Stand ignoré (nom invalide)")
         end
     end
     
     LastHatch = currentTime
+    print("[AutoHatch] Cycle terminé | LastHatch mis à jour")
 end
+
 
 local function autoPlaceEgg()
     if not Config.AutoPlaceEgg then return end
