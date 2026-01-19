@@ -431,99 +431,221 @@ end
 
 local BuyEggRF = ReplicatedStorage.Shared.Packages.Networker["RF/BuyEgg"]
 
+-- ===============================================
+-- 📊 CONFIGURATION BUY EGG
+-- ===============================================
+
+local BuyEggConfig = {
+    MaxWaitTimeSeconds = 300,      -- Temps max d'attente absolu (5 min)
+    MaxWaitPercentage = 50,        -- % max du temps basé sur production
+    RecheckDelay = 30,             -- Revérifier toutes les 30s si pas assez de cash
+    MinCashPercentage = 80,        -- % minimum du prix avant attente
+    ScrollDelay = 1                -- Délai entre chaque scroll d'œuf
+}
+
+-- ===============================================
+-- 🔧 UTILITY FUNCTIONS - CASH & PRODUCTION
+-- ===============================================
+
+local function getCash()
+    local success, value = pcall(function()
+        return LocalPlayer.leaderstats.Cash.Value
+    end)
+    return (success and tonumber(value)) or 0
+end
+
+local function parseNumber(str)
+    if not str then return 0 end
+
+    str = tostring(str):gsub("%$", "")
+    local num = tonumber(str:match("([%d%.]+)")) or 0
+
+    if str:find("K") then
+        num *= 1e3
+    elseif str:find("M") then
+        num *= 1e6
+    elseif str:find("B") then
+        num *= 1e9
+    elseif str:find("T") then
+        num *= 1e12
+    end
+
+    return num
+end
+
+local function getTotalProduction()
+    local myPlot = getMyPlot()
+    if not myPlot then return 0 end
+
+    local standsFolder = getStandsFolder(myPlot)
+    if not standsFolder then return 0 end
+
+    local total = 0
+    for _, stand in ipairs(standsFolder:GetChildren()) do
+        if isValidStandName(stand) and getStandState(stand) == "Brainrot" then
+            local data = readStandContent(stand)
+            total += parseGainPerSec(data.GainPerSec)
+        end
+    end
+
+    return total
+end
+
+local function scrollConveyorEgg()
+    pcall(function()
+        RequestEggSpawnRF:InvokeServer()
+    end)
+    task.wait(BuyEggConfig.ScrollDelay)
+end
+
+-- ===============================================
+-- 🤖 AUTO BUY EGG - LOGIQUE CORRIGÉE
+-- ===============================================
+
+local WaitingForCash = false
+local WaitingEggInfo = nil
+local WaitingStartTime = 0
+local LastEggCheck = 0
+
 local function autoBuyEgg()
     if not Config.AutoBuyEgg then return end
-    
-    local currentTime = tick()
-    if currentTime - LastBuyEgg < Config.ActionDelay then
+
+    local now = tick()
+
+    -- =====================================
+    -- ⏳ MODE ATTENTE DE CASH
+    -- =====================================
+    if WaitingForCash then
+        -- Timeout absolu
+        if now - WaitingStartTime > BuyEggConfig.MaxWaitTimeSeconds then
+            print("⌛ Timeout atteint → abandon de l'œuf")
+            WaitingForCash = false
+            WaitingEggInfo = nil
+            scrollConveyorEgg()
+            return
+        end
+
+        if now - LastEggCheck < BuyEggConfig.RecheckDelay then
+            return
+        end
+
+        -- Vérifier que l'œuf n'a pas changé
+        local currentEgg = getConveyorEggInfo()
+        if not currentEgg or currentEgg.Name ~= WaitingEggInfo.Name then
+            print("⚠️ Œuf changé pendant l'attente → abandon")
+            WaitingForCash = false
+            WaitingEggInfo = nil
+            return
+        end
+
+        local cash = getCash()
+        local price = parseNumber(WaitingEggInfo.Price)
+
+        if cash >= price then
+            local success = pcall(function()
+                BuyEggRF:InvokeServer(WaitingEggInfo.Name, 1)
+            end)
+
+            if success then
+                print("🎉 Œuf acheté après attente:", WaitingEggInfo.Name)
+                scrollConveyorEgg()
+                WaitingForCash = false
+                WaitingEggInfo = nil
+            end
+        else
+            print("⏳ En attente de cash:", cash, "/", price)
+        end
+
+        LastEggCheck = now
         return
     end
-    
-    local player = game:GetService("Players").LocalPlayer
-    local cash = player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Cash") and player.leaderstats.Cash.Value or 0
-    
-    -- Vérifie si on a déjà un œuf dans l'inventaire
-    local eggTool = findEggTool()
-    if eggTool then return end
-    
-    -- Vérifie qu'on a au moins un stand vide disponible
-    local myPlot = getMyPlot()
-    if not myPlot then return end
-    
-    local standsFolder = getStandsFolder(myPlot)
-    if not standsFolder then return end
-    
-    local rebirths = getRebirths()
-    local emptyStand = findEmptyUsableStand(standsFolder, rebirths)
-    if not emptyStand then return end
-    
-    -- Récupère les infos de l'œuf sur le convoyeur
+
+    -- =====================================
+    -- ⏱️ DÉLAI NORMAL
+    -- =====================================
+    if now - LastBuyEgg < Config.ActionDelay then
+        return
+    end
+
+    -- =====================================
+    -- 🥚 RÉCUP ŒUF
+    -- =====================================
     local eggInfo = getConveyorEggInfo()
-    if not eggInfo then
-        warn("❌ Aucun œuf trouvé sur le convoyeur → demande d'un nouvel œuf")
-        pcall(function() RequestEggSpawnRF:InvokeServer() end)
-        LastBuyEgg = currentTime
-        return
-    end
-    
-    -- Valeur du brainrot actuel (à adapter selon ton code)
-    local priceNumber = tonumber(eggInfo.Price:gsub("[^0-9]", "")) or 0
-    
-    
-    local cashNumber = tonumber(cash)
-    local priceNumber = tonumber(priceNumber)
+    if not eggInfo then return end
 
-    if not cashNumber or not priceNumber or priceNumber == 0 then
+    if not isRarityWanted(eggInfo.Rarity) then
+        scrollConveyorEgg()
+        LastBuyEgg = now
         return
     end
 
-    local ratio = cashNumber / priceNumber
-    
-    if ratio < 0.6 then
-        -- Cash trop faible (>40% en dessous) → on change d'œuf
-        print("💸 Cash insuffisant pour acheter le brainrot → nouvel œuf demandé")
-        pcall(function() RequestEggSpawnRF:InvokeServer() end)
-        LastBuyEgg = currentTime
-        return
-    elseif ratio < 0.8 then
-        -- Cash un peu faible (<20% en dessous) → attendre avant prochain achat
-        print("⏳ Cash un peu faible → attente 10s avant prochain ordre")
-        task.delay(10, function()
-            autoBuyEgg()
+    local price = parseNumber(eggInfo.Price)
+    local cash = getCash()
+    local production = getTotalProduction()
+
+    -- =====================================
+    -- ✅ CASH SUFFISANT
+    -- =====================================
+    if cash >= price then
+        local success = pcall(function()
+            BuyEggRF:InvokeServer(eggInfo.Name, 1)
         end)
-        LastBuyEgg = currentTime
+
+        if success then
+            print("✅ Achat immédiat:", eggInfo.Name)
+            scrollConveyorEgg()
+        end
+
+        LastBuyEgg = now
         return
     end
-    
-    -- Vérifie si la rareté est voulue
-    if isRarityWanted(eggInfo.Rarity) then
-        local success, result = pcall(function()
-            return BuyEggRF:InvokeServer(eggInfo.Name, 1)
-        end)
-        
-        if success then
-            print("✅ Œuf acheté:", eggInfo.Name, "| Rareté:", eggInfo.Rarity, "| Prix:", eggInfo.Price)
-            -- Demande un nouvel œuf après achat
-            pcall(function() RequestEggSpawnRF:InvokeServer() end)
-            LastBuyEgg = currentTime
-            task.wait(Config.ActionDelay)
-        else
-            warn("❌ Erreur lors de l'achat:", result)
-            LastBuyEgg = currentTime
-        end
-    else
-        -- Rareté non voulue, demande un nouvel œuf
-        local success, result = pcall(function()
-            return RequestEggSpawnRF:InvokeServer()
-        end)
-        if success then
-            print("🔄 Œuf ignoré:", eggInfo.Name, "| Rareté:", eggInfo.Rarity, "→ Nouvel œuf demandé")
-        else
-            warn("❌ Erreur lors de la demande:", result)
-        end
-        LastBuyEgg = currentTime
-        task.wait(Config.ActionDelay)
+
+    -- =====================================
+    -- ❌ PAS DE PRODUCTION
+    -- =====================================
+    if production <= 0 then
+        scrollConveyorEgg()
+        LastBuyEgg = now
+        return
     end
+
+    -- =====================================
+    -- ⏳ CALCUL ATTENTE
+    -- =====================================
+    local missing = price - cash
+    local timeToEarn = missing / production
+
+    local maxWait = math.min(
+        BuyEggConfig.MaxWaitTimeSeconds,
+        (price / production) * (BuyEggConfig.MaxWaitPercentage / 100)
+    )
+
+    local cashPercent = (cash / price) * 100
+    if cashPercent < BuyEggConfig.MinCashPercentage then
+        scrollConveyorEgg()
+        LastBuyEgg = now
+        return
+    end
+
+    if timeToEarn > maxWait then
+        scrollConveyorEgg()
+        LastBuyEgg = now
+        return
+    end
+
+    -- =====================================
+    -- ⏰ ENTRÉE EN MODE ATTENTE
+    -- =====================================
+    WaitingForCash = true
+    WaitingEggInfo = eggInfo
+    WaitingStartTime = now
+    LastEggCheck = now
+
+    print(string.format(
+        "⏰ Attente cash pour %s | %.1fs estimées",
+        eggInfo.Name,
+        timeToEarn
+    ))
 end
 
 
