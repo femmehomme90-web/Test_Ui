@@ -353,9 +353,301 @@ local function autoCollectBoxes()
     LastBoxCollect = currentTime
 end
 
-Local function autoBuyEgg()
-    print("AutoBuyEgg n'est pas encore implémenté.")
+-- ===============================================
+-- 📋 CONFIGURATION RARETÉ
+-- ===============================================
+
+local RarityConfig = {
+    Admin = true,
+    Common = false,
+    Divine = true,
+    Epic = false,
+    Event = true,
+    Exclusive = true,
+    Exotic = true,
+    GOD = true,
+    Legendary = false,
+    Limited = true,
+    Mythic = false,
+    OG = true,
+    Rare = false,
+    Secret = true,
+    Uncommon = false
+}
+
+-- ===============================================
+-- 🔧 UTILITY FUNCTIONS - CONVOYEUR
+-- ===============================================
+
+local function getConveyorEggInfo()
+    local eggsFolder = workspace.CoreObjects.Eggs
+    
+    for _, egg in ipairs(eggsFolder:GetChildren()) do
+        local targetMesh = nil
+        
+        -- Cherche le mesh qui contient BillboardAttachment
+        for _, child in ipairs(egg:GetChildren()) do
+            if child:FindFirstChild("BillboardAttachment") then
+                targetMesh = child
+                break
+            end
+        end
+        
+        if not targetMesh then
+            continue
+        end
+        
+        local billboardAttachment = targetMesh:FindFirstChild("BillboardAttachment")
+        local eggBillboard = billboardAttachment and billboardAttachment:FindFirstChild("EggBillboard")
+        local frame = eggBillboard and eggBillboard:FindFirstChild("Frame")
+        
+        if not frame then continue end
+        
+        -- Récupération des infos
+        local priceLabel = frame:FindFirstChild("Price")
+        local nameLabel = frame:FindFirstChild("EggName")
+        local rarityLabel = frame:FindFirstChild("Rarity")
+        
+        local price = (priceLabel and priceLabel:IsA("TextLabel")) and priceLabel.Text or "N/A"
+        local eggName = (nameLabel and nameLabel:IsA("TextLabel")) and nameLabel.Text or "N/A"
+        local rarity = (rarityLabel and rarityLabel:IsA("TextLabel")) and rarityLabel.Text or "N/A"
+        
+        -- Retourne les infos du premier œuf trouvé
+        return {
+            Name = eggName,
+            Rarity = rarity,
+            Price = price,
+            Frame = frame
+        }
+    end
+    
+    return nil
 end
+
+local function isRarityWanted(rarity)
+    -- Vérifie si la rareté est dans notre configuration
+    return RarityConfig[rarity] == true
+end
+
+local BuyEggRF = ReplicatedStorage.Shared.Packages.Networker["RF/BuyEgg"]
+
+-- ===============================================
+-- 📊 CONFIGURATION BUY EGG
+-- ===============================================
+
+local BuyEggConfig = {
+    MaxWaitTimeSeconds = 300,      -- Temps max d'attente absolu (5 min)
+    MaxWaitPercentage = 50,        -- % max du temps basé sur production
+    RecheckDelay = 30,             -- Revérifier toutes les 30s si pas assez de cash
+    MinCashPercentage = 80,        -- % minimum du prix avant attente
+    ScrollDelay = 1                -- Délai entre chaque scroll d'œuf
+}
+
+-- ===============================================
+-- 🔧 UTILITY FUNCTIONS - CASH & PRODUCTION
+-- ===============================================
+
+local function getCash()
+    local success, value = pcall(function()
+        return LocalPlayer.leaderstats.Cash.Value
+    end)
+    return (success and tonumber(value)) or 0
+end
+
+local function parseNumber(str)
+    if not str then return 0 end
+
+    str = tostring(str):gsub("%$", "")
+    local num = tonumber(str:match("([%d%.]+)")) or 0
+
+    if str:find("K") then
+        num *= 1e3
+    elseif str:find("M") then
+        num *= 1e6
+    elseif str:find("B") then
+        num *= 1e9
+    elseif str:find("T") then
+        num *= 1e12
+    end
+
+    return num
+end
+
+local function getTotalProduction()
+    local myPlot = getMyPlot()
+    if not myPlot then return 0 end
+
+    local standsFolder = getStandsFolder(myPlot)
+    if not standsFolder then return 0 end
+
+    local total = 0
+    for _, stand in ipairs(standsFolder:GetChildren()) do
+        if isValidStandName(stand) and getStandState(stand) == "Brainrot" then
+            local data = readStandContent(stand)
+            total += parseGainPerSec(data.GainPerSec)
+        end
+    end
+
+    return total
+end
+
+local function scrollConveyorEgg()
+    pcall(function()
+        RequestEggSpawnRF:InvokeServer()
+    end)
+    task.wait(BuyEggConfig.ScrollDelay)
+end
+
+-- ===============================================
+-- 🤖 AUTO BUY EGG - LOGIQUE CORRIGÉE
+-- ===============================================
+
+local WaitingForCash = false
+local WaitingEggInfo = nil
+local WaitingStartTime = 0
+local LastEggCheck = 0
+
+local function autoBuyEgg()
+    if not Config.AutoBuyEgg then return end
+
+    local now = tick()
+
+    -- =====================================
+    -- ⏳ MODE ATTENTE DE CASH
+    -- =====================================
+    if WaitingForCash then
+        -- Timeout absolu
+        if now - WaitingStartTime > BuyEggConfig.MaxWaitTimeSeconds then
+            print("⌛ Timeout atteint → abandon de l'œuf")
+            WaitingForCash = false
+            WaitingEggInfo = nil
+            scrollConveyorEgg()
+            return
+        end
+
+        if now - LastEggCheck < BuyEggConfig.RecheckDelay then
+            return
+        end
+
+        -- Vérifier que l'œuf n'a pas changé
+        local currentEgg = getConveyorEggInfo()
+        if not currentEgg or currentEgg.Name ~= WaitingEggInfo.Name then
+            print("⚠️ Œuf changé pendant l'attente → abandon")
+            WaitingForCash = false
+            WaitingEggInfo = nil
+            return
+        end
+
+        local cash = getCash()
+        local price = parseNumber(WaitingEggInfo.Price)
+
+        if cash >= price then
+            local success = pcall(function()
+                BuyEggRF:InvokeServer(WaitingEggInfo.Name, 1)
+            end)
+
+            if success then
+                print("🎉 Œuf acheté après attente:", WaitingEggInfo.Name)
+                scrollConveyorEgg()
+                WaitingForCash = false
+                WaitingEggInfo = nil
+            end
+        else
+            print("⏳ En attente de cash:", cash, "/", price)
+        end
+
+        LastEggCheck = now
+        return
+    end
+
+    -- =====================================
+    -- ⏱️ DÉLAI NORMAL
+    -- =====================================
+    if now - LastBuyEgg < Config.ActionDelay then
+        return
+    end
+
+    -- =====================================
+    -- 🥚 RÉCUP ŒUF
+    -- =====================================
+    local eggInfo = getConveyorEggInfo()
+    if not eggInfo then return end
+
+    if not isRarityWanted(eggInfo.Rarity) then
+        scrollConveyorEgg()
+        LastBuyEgg = now
+        return
+    end
+
+    local price = parseNumber(eggInfo.Price)
+    local cash = getCash()
+    local production = getTotalProduction()
+
+    -- =====================================
+    -- ✅ CASH SUFFISANT
+    -- =====================================
+    if cash >= price then
+        local success = pcall(function()
+            BuyEggRF:InvokeServer(eggInfo.Name, 1)
+        end)
+
+        if success then
+            print("✅ Achat immédiat:", eggInfo.Name)
+            scrollConveyorEgg()
+        end
+
+        LastBuyEgg = now
+        return
+    end
+
+    -- =====================================
+    -- ❌ PAS DE PRODUCTION
+    -- =====================================
+    if production <= 0 then
+        scrollConveyorEgg()
+        LastBuyEgg = now
+        return
+    end
+
+    -- =====================================
+    -- ⏳ CALCUL ATTENTE
+    -- =====================================
+    local missing = price - cash
+    local timeToEarn = missing / production
+
+    local maxWait = math.min(
+        BuyEggConfig.MaxWaitTimeSeconds,
+        (price / production) * (BuyEggConfig.MaxWaitPercentage / 100)
+    )
+
+    local cashPercent = (cash / price) * 100
+    if cashPercent < BuyEggConfig.MinCashPercentage then
+        scrollConveyorEgg()
+        LastBuyEgg = now
+        return
+    end
+
+    if timeToEarn > maxWait then
+        scrollConveyorEgg()
+        LastBuyEgg = now
+        return
+    end
+
+    -- =====================================
+    -- ⏰ ENTRÉE EN MODE ATTENTE
+    -- =====================================
+    WaitingForCash = true
+    WaitingEggInfo = eggInfo
+    WaitingStartTime = now
+    LastEggCheck = now
+
+    print(string.format(
+        "⏰ Attente cash pour %s | %.1fs estimées",
+        eggInfo.Name,
+        timeToEarn
+    ))
+end
+
 
 -- ===============================================
 -- 🎨 GUI CREATION
