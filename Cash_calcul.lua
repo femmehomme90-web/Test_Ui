@@ -105,15 +105,22 @@ for _, stand in ipairs(stands:GetChildren()) do
     end
 end
 print("Gain/sec TOTAL :", totalGainPerSec)
+print("\n===== ⏱️ TEMPS POUR ACHETER =====")
+
 for _, eggFolder in ipairs(workspace.CoreObjects.Eggs:GetChildren()) do
+    -- Vérifier si c'est l'œuf actif
+    if not eggFolder:GetAttribute("CurrentEgg") then continue end
+    
     local eggModel = eggFolder:FindFirstChildWhichIsA("Model") or eggFolder:FindFirstChildWhichIsA("MeshPart")
     if not eggModel then continue end
     
     local frame = eggModel:FindFirstChild("BillboardAttachment", true)
     frame = frame and frame.EggBillboard and frame.EggBillboard.Frame
     if not frame or not frame:FindFirstChild("Price") then continue end
+    
     local price = parseEggPrice(frame.Price.Text)
     if price == 0 then continue end
+    
     if cash >= price then
         print(string.format("✅ %s : ACHETABLE", eggFolder.Name))
     elseif totalGainPerSec > 0 then
