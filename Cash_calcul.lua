@@ -216,7 +216,7 @@ end
 
 -- Boucle principale
 local function mainLoop()
-    print("\n===== 🚀 DÉMARRAGE AUTO-ACHAT (SAFE MODE) =====\n")
+    print("\n===== 🚀 DÉMARRAGE AUTO-ACHAT (SAFE OU PAS MDRRRR) =====\n")
 
     while true do
         if locked then
