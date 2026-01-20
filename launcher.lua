@@ -642,7 +642,6 @@ end
 -- ===============================================
 
 RunService.Heartbeat:Connect(function()
-    autoUpgrade()
     autoHatch()
     autoPlaceEgg()
     autoCollectBoxes()
@@ -930,7 +929,6 @@ createSlider("Target Level", "TargetLevel", 1, 100, 7)
 -- ===============================================
 
 RunService.Heartbeat:Connect(function()
-    autoUpgrade()
     autoHatch()
     autoPlaceEgg()
     autoCollectBoxes()
