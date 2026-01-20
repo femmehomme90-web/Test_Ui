@@ -216,37 +216,83 @@ end
 
 -- Boucle principale
 local function mainLoop()
-    print("\n===== 🚀 DÉMARRAGE AUTO-ACHAT =====\n")
-    
+    print("\n===== 🚀 DÉMARRAGE AUTO-ACHAT (SAFE MODE) =====\n")
+
     while true do
+        if locked then
+            task.wait(LOOP_DELAY)
+            continue
+        end
+
         local cash = getCash()
         local gainPerSec = calculateTotalGainPerSec()
         local egg = getCurrentEgg()
-        
-        -- Cas : Aucun œuf détecté → CHANGER
+
+        -- Aucun œuf détecté
         if not egg then
-            print("❌ Aucun œuf sur le convoyeur → Changement")
+            print("❌ Aucun œuf détecté → changement")
+            locked = true
             changeEgg()
-            task.wait(2) -- Attendre que le nouvel œuf apparaisse
+            task.wait(POST_CHANGE_DELAY)
+            locked = false
+            lastEggName = nil
+            sameEggCount = 0
             continue
         end
-        
-        -- Prendre une décision
-        local action, waitTime = decideAction(egg, cash, gainPerSec)
-        
-        if action == "BUY" then
-            buyEgg(egg.name)
-            
-        elseif action == "CHANGE" then
-            changeEgg()
-            task.wait(1) -- Attendre que le nouvel œuf apparaisse
-            
-        elseif action == "WAIT" then
-            -- Attendre un peu avant de revérifier
-            task.wait(math.min(waitTime, 2)) -- Max 5 secondes entre les checks
+
+        -- Détection du même œuf
+        if egg.name == lastEggName then
+            sameEggCount += 1
+        else
+            sameEggCount = 0
+            lastEggName = egg.name
         end
+
+        -- Même œuf bloqué
+        if sameEggCount >= MAX_SAME_EGG then
+            print("⚠️ Même œuf détecté 3 fois → SKIP FORCÉ")
+            locked = true
+            changeEgg()
+            task.wait(POST_CHANGE_DELAY)
+            locked = false
+            sameEggCount = 0
+            lastEggName = nil
+            continue
+        end
+
+        -- Décision logique
+        local action, waitTime = decideAction(egg, cash, gainPerSec)
+
+        if action == "BUY" then
+            locked = true
+            buyEgg(egg.name)
+
+            -- IMPORTANT : après un achat → on passe TOUJOURS à l’œuf suivant
+            task.wait(POST_BUY_DELAY)
+            changeEgg()
+
+            task.wait(POST_CHANGE_DELAY)
+            locked = false
+            sameEggCount = 0
+            lastEggName = nil
+
+        elseif action == "CHANGE" then
+            locked = true
+            changeEgg()
+            task.wait(POST_CHANGE_DELAY)
+            locked = false
+            sameEggCount = 0
+            lastEggName = nil
+
+        elseif action == "WAIT" then
+            -- attente douce, jamais trop longue
+            task.wait(math.min(waitTime or 1, 2))
+        end
+
+        task.wait(LOOP_DELAY)
     end
 end
+
 
 -- Lancement avec gestion d'erreur
 local success, err = pcall(mainLoop)
