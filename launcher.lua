@@ -491,47 +491,44 @@ end
 -- 🎯 AUTO FUNCTIONS
 -- ===============================================
 
-local function autoUpgrade()
-    if not Config.AutoUpgrade then return end
-    
-    local currentTime = tick()
-    if currentTime - LastUpgrade < Config.UpgradeDelay then
-        return
-    end
-    
-    local myPlot = getMyPlot()
-    if not myPlot then return end
-    
-    local standsFolder = getStandsFolder(myPlot)
-    if not standsFolder then return end
-    
-    for _, stand in ipairs(standsFolder:GetChildren()) do
-        if not isValidStandName(stand) then
+task.spawn(function()
+    while true do
+        task.wait(Config.UpgradeDelay)
+        
+        if not Config.AutoUpgrade then
             continue
         end
         
-        local level = getBrainrotLevel(stand)
+        local myPlot = getMyPlot()
+        if not myPlot then continue end
         
-        -- Upgrade seulement si le brainrot existe (level > 0) et n'est pas au max
-        if level > 0 and level < Config.TargetLevel then
-            local success, err = pcall(function()
-                UpgradeBrainrotRF:InvokeServer(stand.Name)
-            end)
-            
-            if success then
-                print("✅ Upgraded", stand.Name, "| Niveau:", level, "→", level + 1)
-            else
-                warn("❌ Erreur upgrade:", err)
+        local standsFolder = getStandsFolder(myPlot)
+        if not standsFolder then continue end
+        
+        for _, stand in ipairs(standsFolder:GetChildren()) do
+            if not isValidStandName(stand) then
+                continue
             end
             
-            LastUpgrade = currentTime
-            task.wait(Config.ActionDelay)
-            return  -- Upgrade un seul stand par appel
+            local level = getBrainrotLevel(stand)
+            
+            if level > 0 and level < Config.TargetLevel then
+                local success, err = pcall(function()
+                    UpgradeBrainrotRF:InvokeServer(stand.Name)
+                end)
+                
+                if success then
+                    print("✅ Upgraded", stand.Name, "| Niveau:", level, "→", level + 1)
+                else
+                    warn("❌ Erreur upgrade:", err)
+                end
+                
+                task.wait(Config.ActionDelay)
+                break  -- Un seul upgrade par cycle
+            end
         end
     end
-    
-    LastUpgrade = currentTime
-end
+end)
 
 local function autoHatch()
     if not Config.AutoHatch then return end
