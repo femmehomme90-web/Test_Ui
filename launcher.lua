@@ -30,8 +30,8 @@ local Config = {
     AutoCollectBoxes = false,
     AutoBuyEgg = false,
     BoxCollectDelay = 30,
-    ActionDelay = 0.2,
-    UpgradeDelay = 0.2,
+    ActionDelay = 0.5,
+    UpgradeDelay = 0.5,
     TargetLevel = 45
 }
 
