@@ -61,7 +61,7 @@ local RarityConfig = {
     Mythic = false,
     OG = true,
     Rare = false,
-    Secret = true,
+    Secret = false,
     Uncommon = false
 }
 
@@ -248,17 +248,19 @@ local function mainLoop()
             lastEggName = egg.name
         end
 
-        -- Même œuf bloqué
-        if sameEggCount >= MAX_SAME_EGG then
-            print("⚠️ Même œuf détecté 3 fois → SKIP FORCÉ")
-            locked = true
-            changeEgg()
-            task.wait(POST_CHANGE_DELAY)
-            locked = false
-            sameEggCount = 0
-            lastEggName = nil
-            continue
-        end
+        sameEggCount = tonumber(sameEggCount) or 0
+
+    -- Même œuf bloqué
+    if sameEggCount >= MAX_SAME_EGG then
+        print("⚠️ Même œuf détecté 3 fois → SKIP FORCÉ")
+        locked = true
+        changeEgg()
+        task.wait(POST_CHANGE_DELAY)
+        locked = false
+        sameEggCount = 0
+        lastEggName = ""
+        continue
+end
 
         -- Décision logique
         local action, waitTime = decideAction(egg, cash, gainPerSec)
