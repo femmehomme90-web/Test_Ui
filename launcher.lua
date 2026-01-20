@@ -680,7 +680,7 @@ Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 Title.BorderSizePixel = 0
 Title.Size = UDim2.new(1, 0, 0, 50)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "🎮 AUTO FARM"
+Title.Text = "🎮 AUTO FARMMMMM"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 20
 
