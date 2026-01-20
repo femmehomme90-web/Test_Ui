@@ -219,7 +219,7 @@ local function mainLoop()
     print("\n===== 🚀 DÉMARRAGE AUTO-ACHAT (SAFE OU PAS MDRRRR) =====\n")
 
     local LOOP_DELAY = 1
-    local POST_CHANGE_DELAY = 1
+    local POST_CHANGE_DELAY = 0.5
     local POST_BUY_DELAY = 1
     local MAX_SAME_EGG = 3
 
