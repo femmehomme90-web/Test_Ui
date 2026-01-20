@@ -658,7 +658,7 @@ local Title = Instance.new("TextLabel")
 local UICorner = Instance.new("UICorner")
 local UIListLayout = Instance.new("UIListLayout")
 
-ScreenGui.Name = "AutoFarmGUI"
+ScreenGui.Name = "AutoFarmGUIII"
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
