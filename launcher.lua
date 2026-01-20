@@ -30,8 +30,9 @@ local Config = {
     AutoCollectBoxes = false,
     AutoBuyEgg = false,
     BoxCollectDelay = 30,
-    ActionDelay = 2,
-    UpgradeDelay = 10
+    ActionDelay = 0.2,
+    UpgradeDelay = 0.2,
+    TargetLevel = 45
 }
 
 local RarityConfig = {
@@ -144,6 +145,18 @@ local function getStandState(stand)
     end
 
     return "Empty"
+end
+
+local function getBrainrotLevel(stand)
+    for _, child in ipairs(stand:GetChildren()) do
+        if child:IsA("Folder") or child:IsA("Model") then
+            local level = child:GetAttribute("Level")
+            if level ~= nil then
+                return tonumber(level) or 0
+            end
+        end
+    end
+    return 0
 end
 
 local function isStandEmpty(stand)
@@ -492,32 +505,29 @@ local function autoUpgrade()
     local standsFolder = getStandsFolder(myPlot)
     if not standsFolder then return end
     
-    local brainrotStands = {}
-    
     for _, stand in ipairs(standsFolder:GetChildren()) do
-        if isValidStandName(stand) then
-            local state = getStandState(stand)
-            if state == "Brainrot" then
-                local data = readStandContent(stand)
-                table.insert(brainrotStands, {
-                    Stand = stand,
-                    Data = data,
-                    Gain = parseGainPerSec(data.GainPerSec)
-                })
-            end
+        if not isValidStandName(stand) then
+            continue
         end
-    end
-    
-    table.sort(brainrotStands, function(a, b)
-        return a.Gain > b.Gain
-    end)
-    
-    for _, info in ipairs(brainrotStands) do
-        pcall(function()
-            UpgradeBrainrotRF:InvokeServer(info.Stand.Name)
-        end)
         
-        task.wait(Config.ActionDelay)
+        local level = getBrainrotLevel(stand)
+        
+        -- Upgrade seulement si le brainrot existe (level > 0) et n'est pas au max
+        if level > 0 and level < Config.TargetLevel then
+            local success, err = pcall(function()
+                UpgradeBrainrotRF:InvokeServer(stand.Name)
+            end)
+            
+            if success then
+                print("✅ Upgraded", stand.Name, "| Niveau:", level, "→", level + 1)
+            else
+                warn("❌ Erreur upgrade:", err)
+            end
+            
+            LastUpgrade = currentTime
+            task.wait(Config.ActionDelay)
+            return  -- Upgrade un seul stand par appel
+        end
     end
     
     LastUpgrade = currentTime
@@ -916,6 +926,7 @@ createToggle("Auto Place Egg", "AutoPlaceEgg", 3)
 createToggle("Auto Collect Boxes", "AutoCollectBoxes", 4)
 createToggle("Auto Buy Egg", "AutoBuyEgg", 5)
 createSlider("Box Delay", "BoxCollectDelay", 1, 120, 6)
+createSlider("Target Level", "TargetLevel", 1, 100, 7)
 
 -- ===============================================
 -- 🔄 MAIN LOOP
