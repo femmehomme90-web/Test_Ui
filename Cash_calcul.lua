@@ -708,8 +708,6 @@ local Window = Rayfield:CreateWindow({
    },
    Discord = {
       Enabled = false,
-      Invite = "noinvite",
-      RememberJoins = true
    },
    KeySystem = false,
 })
