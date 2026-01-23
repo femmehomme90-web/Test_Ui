@@ -38,21 +38,22 @@ local Config = {
 }
 
 local RarityConfig = {
-    Admin = true,
-    Common = false,
     Divine = true,
-    Epic = false,
+    GOD = true,
+    Admin = true,
     Event = true,
+    Limited = true,
+    OG = true,
     Exclusive = true,
     Exotic = true,
-    GOD = true,
-    Legendary = false,
-    Limited = true,
+    secret = false,
     Mythic = false,
-    OG = true,
+    Legendary = false,
+    Epic = false,
     Rare = false,
-    Secret = false,
-    Uncommon = false
+    Uncommon = false,
+    Common = false,
+    
 }
 
 local LastBoxCollect = 0
@@ -426,13 +427,7 @@ local function buyEgg(eggName)
 end
 
 local function decideAction(egg, cash, gainPerSec)
-    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    print("🥚 Œuf :", egg.name)
-    print("🎯 Rareté :", egg.rarity)
-    print("💰 Prix :", egg.price)
-    print("💵 Cash :", cash)
-    print("⚙️ Gain/sec :", gainPerSec)
-    
+        
     -- Cas 1 : Rareté non autorisée → CHANGER
     if not RarityConfig[egg.rarity] then
         print("❌ CHANGE → Rareté non autorisée")
@@ -441,13 +436,13 @@ local function decideAction(egg, cash, gainPerSec)
     
     -- Cas 2 : Cash suffisant → ACHETER
     if cash >= egg.price then
+        print(egg.name)
         print("✅ BUY → Cash suffisant")
         return "BUY"
     end
     
     -- Cas 3 : Pas de production → CHANGER
     if gainPerSec <= 0 then
-        print("❌ CHANGE → Aucune production")
         return "CHANGE"
     end
     
@@ -461,7 +456,6 @@ local function decideAction(egg, cash, gainPerSec)
     
     -- Cas 5 : Temps d'attente trop long → CHANGER
     if waitTime > MAX_WAIT_SECONDS then
-        print("❌ CHANGE → Attente > 30 min")
         return "CHANGE"
     end
     

@@ -333,3 +333,5 @@ game:GetService("ReplicatedStorage").Shared.Packages.Networker["RF/UpgradeBrainr
 récuperer un brainrot sur un stand
 -------------------------------------------------------------
 game:GetService("ReplicatedStorage").Shared.Packages.Networker["RE/PickupBrainrot"]:FireServer("Stand9")
+
+
