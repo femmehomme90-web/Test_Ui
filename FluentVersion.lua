@@ -263,18 +263,38 @@ local AllStandsData = {}
 local StandsDataUpdateDelay = 2 -- Réglable
 
 local function getAllStandsData()
+    print("🔍 getAllStandsData appelé")
+    
     local myPlot = getMyPlot()
-    if not myPlot then return {} end
+    if not myPlot then 
+        print("❌ Aucun plot trouvé")
+        return {} 
+    end
+    print("✅ Plot trouvé:", myPlot.Name)
     
     local standsFolder = getStandsFolder(myPlot)
-    if not standsFolder then return {} end
+    if not standsFolder then 
+        print("❌ Aucun standsFolder trouvé")
+        return {} 
+    end
+    print("✅ StandsFolder trouvé")
     
     local rebirths = getRebirths()
+    print("✅ Rebirths:", rebirths)
+    
     local data = {}
     
     for _, stand in ipairs(standsFolder:GetChildren()) do
-        if not isValidStandName(stand) then continue end
-        if not canUseStand(stand, rebirths) then continue end -- Filtrer les stands utilisables
+        if not isValidStandName(stand) then 
+            print("⚠️ Stand ignoré (nom invalide):", stand.Name)
+            continue 
+        end
+        if not canUseStand(stand, rebirths) then 
+            print("⚠️ Stand ignoré (pas assez de rebirths):", stand.Name)
+            continue 
+        end
+        
+        print("✅ Stand valide:", stand.Name)
         
         local state = getStandState(stand)
         local level = 0
@@ -290,7 +310,7 @@ local function getAllStandsData()
         
         table.insert(data, {
             StandName = stand.Name,
-            IsUsable = true, -- Toujours true car déjà filtré
+            IsUsable = true,
             State = state,
             BrainrotName = brainrotName,
             Level = level,
@@ -298,8 +318,24 @@ local function getAllStandsData()
         })
     end
     
+    print("📊 Total stands récupérés:", #data)
+    
     return data
 end
+-- Task pour actualiser automatiquement les données
+task.spawn(function()
+    -- Initialiser immédiatement
+    AllStandsData = getAllStandsData()
+    
+    while true do
+        task.wait(StandsDataUpdateDelay)
+        AllStandsData = getAllStandsData()
+    end
+end)
+
+-- Attendre que les données soient chargées avant de créer l'UI
+task.wait(1)
+
 
 -- Task pour actualiser automatiquement les données
 task.spawn(function()
@@ -909,21 +945,17 @@ function refreshBrainrotUI()
     -- Calculer les stats globales
     local stats = calculateGlobalStats()
     
-    -- Mettre à jour les labels de stats
-    if StatsLabels.TotalGain then
-        StatsLabels.TotalGain:Set("💰 Gain Total/sec: $" .. formatNumber(stats.TotalGain))
-    end
-    if StatsLabels.Occupied then
-        StatsLabels.Occupied:Set("📊 Stands occupés: " .. stats.Occupied)
-    end
-    if StatsLabels.Empty then
-        StatsLabels.Empty:Set("⚪ Stands vides: " .. stats.Empty)
-    end
+    -- Afficher notification de mise à jour
+    Fluent:Notify({
+        Title = "🔄 Actualisation",
+        Content = string.format("Gain: $%s | Occupés: %d | Vides: %d", 
+            formatNumber(stats.TotalGain), 
+            stats.Occupied, 
+            stats.Empty),
+        Duration = 3
+    })
     
-    -- Recréer les cartes de stands
-    -- Note: Fluent ne permet pas de supprimer dynamiquement des éléments
-    -- On devra recréer la tab entière (voir fonction suivante)
-    print("🔄 UI actualisée")
+    print("🔄 UI actualisée - Gain:", formatNumber(stats.TotalGain))
 end
 
 function recreateBrainrotTab()
@@ -1062,21 +1094,21 @@ end
 BrainrotManagerTab = Tabs.Brainrot
 
 -- Section Stats Globales
-local StatsSection = BrainrotManagerTab:AddSection("📊 Stats Globales")
+BrainrotManagerTab:AddSection("📊 Stats Globales")
 
 local initialStats = calculateGlobalStats()
 
-StatsLabels.TotalGain = BrainrotManagerTab:AddParagraph({
+BrainrotManagerTab:AddParagraph({
     Title = "💰 Gain Total/sec",
     Content = "$" .. formatNumber(initialStats.TotalGain)
 })
 
-StatsLabels.Occupied = BrainrotManagerTab:AddParagraph({
+BrainrotManagerTab:AddParagraph({
     Title = "📊 Stands occupés",
     Content = tostring(initialStats.Occupied)
 })
 
-StatsLabels.Empty = BrainrotManagerTab:AddParagraph({
+BrainrotManagerTab:AddParagraph({
     Title = "⚪ Stands vides",
     Content = tostring(initialStats.Empty)
 })
@@ -1085,16 +1117,24 @@ BrainrotManagerTab:AddButton({
     Title = "🔄 Refresh",
     Description = "Actualiser toutes les données",
     Callback = function()
-        recreateBrainrotTab()
+        refreshBrainrotUI()
     end
 })
 
 -- Section Stands
-local StandsSection = BrainrotManagerTab:AddSection("🎯 Stands")
+BrainrotManagerTab:AddSection("🎯 Stands")
 
--- Créer les cartes pour chaque stand
-for _, standData in ipairs(AllStandsData) do
-    createStandCard(standData, BrainrotManagerTab)
+-- Attendre que les données soient disponibles
+if #AllStandsData == 0 then
+    BrainrotManagerTab:AddParagraph({
+        Title = "⏳ Chargement...",
+        Content = "Les données des stands sont en cours de chargement.\nCliquez sur 'Refresh' dans quelques secondes."
+    })
+else
+    -- Créer les cartes pour chaque stand
+    for _, standData in ipairs(AllStandsData) do
+        createStandCard(standData, BrainrotManagerTab)
+    end
 end
 
 -- ===============================================
