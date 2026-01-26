@@ -35,6 +35,7 @@ local Config = {
     UpgradeDelay = 0.5,
     TargetLevel = 45,
     PickupWorstDelay = 5
+    MinEggPrice = 0
 }
 
 local RarityConfig = {
@@ -46,7 +47,7 @@ local RarityConfig = {
     OG = true,
     Exclusive = true,
     Exotic = true,
-    secret = false,
+    Secret = false,
     Mythic = false,
     Legendary = false,
     Epic = false,
@@ -62,6 +63,24 @@ local LastHatch = 0
 local LastPlaceEgg = 0
 local LastBuyEgg = 0
 local LastPickupWorst = 0
+
+-- Juste après Config, ajoute :
+local PricePresets = {
+    ["Désactivé"] = 0,
+    ["50M"] = 50000000,
+    ["100M"] = 100000000,
+    ["500M"] = 500000000,
+    ["750M"] = 750000000,
+    ["50B"] = 50000000000,
+    ["100B"] = 100000000000,
+    ["500B"] = 500000000000,
+    ["750B"] = 750000000000,
+    ["50T"] = 50000000000000,
+    ["100T"] = 100000000000000,
+    ["500T"] = 500000000000000,
+    ["750T"] = 750000000000000,
+    ["1Qa"] = 1000000000000000
+}
 
 
 local MAX_WAIT_SECONDS = 60 * 60 -- 30 minutes
@@ -255,96 +274,6 @@ local function findWorstBrainrot(standsFolder)
     return worstStand, worstGain
 end
 
--- ===============================================
--- 📊 GET ALL STANDS DATA
--- ===============================================
-
-local AllStandsData = {}
-local StandsDataUpdateDelay = 2 -- Réglable
-
-local function getAllStandsData()
-    print("🔍 getAllStandsData appelé")
-    
-    local myPlot = getMyPlot()
-    if not myPlot then 
-        print("❌ Aucun plot trouvé")
-        return {} 
-    end
-    print("✅ Plot trouvé:", myPlot.Name)
-    
-    local standsFolder = getStandsFolder(myPlot)
-    if not standsFolder then 
-        print("❌ Aucun standsFolder trouvé")
-        return {} 
-    end
-    print("✅ StandsFolder trouvé")
-    
-    local rebirths = getRebirths()
-    print("✅ Rebirths:", rebirths)
-    
-    local data = {}
-    
-    for _, stand in ipairs(standsFolder:GetChildren()) do
-        if not isValidStandName(stand) then 
-            print("⚠️ Stand ignoré (nom invalide):", stand.Name)
-            continue 
-        end
-        if not canUseStand(stand, rebirths) then 
-            print("⚠️ Stand ignoré (pas assez de rebirths):", stand.Name)
-            continue 
-        end
-        
-        print("✅ Stand valide:", stand.Name)
-        
-        local state = getStandState(stand)
-        local level = 0
-        local brainrotName = nil
-        local gainPerSec = 0
-        
-        if state == "Brainrot" then
-            level = getBrainrotLevel(stand)
-            local content = readStandContent(stand)
-            brainrotName = content.Name
-            gainPerSec = parseGainPerSec(content.GainPerSec)
-        end
-        
-        table.insert(data, {
-            StandName = stand.Name,
-            IsUsable = true,
-            State = state,
-            BrainrotName = brainrotName,
-            Level = level,
-            GainPerSec = gainPerSec
-        })
-    end
-    
-    print("📊 Total stands récupérés:", #data)
-    
-    return data
-end
--- Task pour actualiser automatiquement les données
-task.spawn(function()
-    -- Initialiser immédiatement
-    AllStandsData = getAllStandsData()
-    
-    while true do
-        task.wait(StandsDataUpdateDelay)
-        AllStandsData = getAllStandsData()
-    end
-end)
-
--- Attendre que les données soient chargées avant de créer l'UI
-task.wait(1)
-
-
--- Task pour actualiser automatiquement les données
-task.spawn(function()
-    while true do
-        task.wait(StandsDataUpdateDelay)
-        AllStandsData = getAllStandsData()
-    end
-end)
-
 local function autoPickupWorst()
     if not Config.AutoPickupWorst then return end
     
@@ -517,39 +446,43 @@ local function buyEgg(eggName)
 end
 
 local function decideAction(egg, cash, gainPerSec)
-        
+    
+    print("🔍 DEBUG - Rareté:", egg.rarity, "| Autorisée?", RarityConfig[egg.rarity])
+    print("💰 DEBUG - Prix œuf:", egg.price, "| Prix min config:", Config.MinEggPrice)
+    
     -- Cas 1 : Rareté non autorisée → CHANGER
     if not RarityConfig[egg.rarity] then
         print("❌ CHANGE → Rareté non autorisée")
         return "CHANGE"
     end
     
-    -- Cas 2 : Cash suffisant → ACHETER
+    -- Cas 2 : Prix pas assez élevé (strictement supérieur) → CHANGER
+    if Config.MinEggPrice > 0 and egg.price <= Config.MinEggPrice then
+        return "CHANGE"
+    end
+    
+    -- Cas 3 : Cash suffisant → ACHETER
     if cash >= egg.price then
-        print(egg.name)
-        print("✅ BUY → Cash suffisant")
         return "BUY"
     end
     
-    -- Cas 3 : Pas de production → CHANGER
+    -- Cas 4 : Pas de production → CHANGER
     if gainPerSec <= 0 then
         return "CHANGE"
     end
     
-    -- Cas 4 : Calculer le temps d'attente
+    -- Cas 5 : Calculer le temps d'attente
     local waitTime = (egg.price - cash) / gainPerSec
     local hours = math.floor(waitTime / 3600)
     local minutes = math.floor((waitTime % 3600) / 60)
     local seconds = math.floor(waitTime % 60)
-    
-    print(string.format("⏳ Temps estimé : %dh %dm %ds", hours, minutes, seconds))
-    
-    -- Cas 5 : Temps d'attente trop long → CHANGER
+        
+    -- Cas 6 : Temps d'attente trop long → CHANGER
     if waitTime > MAX_WAIT_SECONDS then
         return "CHANGE"
     end
     
-    -- Cas 6 : Temps acceptable → ATTENDRE
+    -- Cas 7 : Temps acceptable → ATTENDRE
     print(string.format("⏰ WAIT → Attente de %dh %dm %ds", hours, minutes, seconds))
     return "WAIT", waitTime
 end
@@ -776,229 +709,30 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- ===============================================
--- 🧠 BRAINROT MANAGER - UI FUNCTIONS
--- ===============================================
-
-local BrainrotManagerTab = nil
-local StatsLabels = {}
-local StandElements = {}
-
-local function formatNumber(num)
-    if num >= 1e9 then
-        return string.format("%.2fB", num / 1e9)
-    elseif num >= 1e6 then
-        return string.format("%.2fM", num / 1e6)
-    elseif num >= 1e3 then
-        return string.format("%.2fK", num / 1e3)
-    else
-        return string.format("%.2f", num)
-    end
-end
-
-local function calculateGlobalStats()
-    local totalGain = 0
-    local occupied = 0
-    local empty = 0
-    
-    for _, standData in ipairs(AllStandsData) do
-        if standData.State == "Brainrot" then
-            totalGain = totalGain + standData.GainPerSec
-            occupied = occupied + 1
-        elseif standData.State == "Empty" then
-            empty = empty + 1
-        elseif standData.State == "Egg" then
-            occupied = occupied + 1
-        end
-    end
-    
-    return {
-        TotalGain = totalGain,
-        Occupied = occupied,
-        Empty = empty
-    }
-end
-
-local function doUpgradeStand(standName)
-    local success, err = pcall(function()
-        UpgradeBrainrotRF:InvokeServer(standName)
-    end)
-    
-    if success then
-        print("✅ Upgraded", standName)
-    else
-        warn("❌ Erreur upgrade:", err)
-    end
-    
-    task.wait(0.5)
-    refreshBrainrotUI()
-end
-
-local function doPickupStand(standName)
-    local success, err = pcall(function()
-        PickupBrainrotRE:FireServer(standName)
-    end)
-    
-    if success then
-        print("✅ Pickup", standName)
-    else
-        warn("❌ Erreur pickup:", err)
-    end
-    
-    task.wait(0.5)
-    refreshBrainrotUI()
-end
-
-local function doPlaceEggOnStand(standName)
-    local eggTool = findEggTool()
-    if not eggTool then
-        warn("❌ Aucun œuf dans l'inventaire")
-        return
-    end
-    
-    equipTool(eggTool)
-    
-    local success, err = pcall(function()
-        PlaceEggRF:InvokeServer(standName, eggTool.Name)
-    end)
-    
-    if success then
-        print("✅ Œuf placé sur", standName)
-    else
-        warn("❌ Erreur place egg:", err)
-    end
-    
-    task.wait(0.5)
-    refreshBrainrotUI()
-end
-
-local function createStandCard(standData, container)
-    local state = standData.State
-    local standName = standData.StandName
-    
-    -- Infos du stand
-    local infoText = "📍 " .. standName .. "\n"
-    
-    if state == "Empty" then
-        infoText = infoText .. "État: ⚪ Vide"
-    elseif state == "Egg" then
-        infoText = infoText .. "État: 🥚 Œuf en incubation"
-    elseif state == "Brainrot" then
-        infoText = infoText .. "État: 🧠 Brainrot\n"
-        infoText = infoText .. "Nom: " .. (standData.BrainrotName or "N/A") .. "\n"
-        infoText = infoText .. "Niveau: " .. standData.Level .. "\n"
-        infoText = infoText .. "Gain/sec: $" .. formatNumber(standData.GainPerSec)
-    end
-    
-    local label = container:AddParagraph({
-        Title = standName,
-        Content = infoText
-    })
-    
-    -- Boutons
-    local canUpgrade = (state == "Brainrot" and standData.Level < Config.TargetLevel)
-    local canPickup = (state == "Brainrot")
-    local canPlaceEgg = (state == "Empty" and findEggTool() ~= nil)
-    
-    local upgradeBtn = container:AddButton({
-        Title = "⬆️ Upgrade",
-        Description = canUpgrade and "Améliorer au niveau " .. (standData.Level + 1) or "Impossible",
-        Callback = function()
-            if canUpgrade then
-                doUpgradeStand(standName)
-            end
-        end
-    })
-    
-    local pickupBtn = container:AddButton({
-        Title = "🗑️ Pickup",
-        Description = canPickup and "Retirer le brainrot" or "Impossible",
-        Callback = function()
-            if canPickup then
-                doPickupStand(standName)
-            end
-        end
-    })
-    
-    local placeEggBtn = container:AddButton({
-        Title = "🥚 Place Egg",
-        Description = canPlaceEgg and "Poser un œuf" or "Impossible",
-        Callback = function()
-            if canPlaceEgg then
-                doPlaceEggOnStand(standName)
-            end
-        end
-    })
-    
-    -- Stocker les éléments pour refresh
-    table.insert(StandElements, {
-        Label = label,
-        UpgradeBtn = upgradeBtn,
-        PickupBtn = pickupBtn,
-        PlaceEggBtn = placeEggBtn
-    })
-end
-
-function refreshBrainrotUI()
-    -- Actualiser les données
-    AllStandsData = getAllStandsData()
-    
-    -- Calculer les stats globales
-    local stats = calculateGlobalStats()
-    
-    -- Afficher notification de mise à jour
-    Fluent:Notify({
-        Title = "🔄 Actualisation",
-        Content = string.format("Gain: $%s | Occupés: %d | Vides: %d", 
-            formatNumber(stats.TotalGain), 
-            stats.Occupied, 
-            stats.Empty),
-        Duration = 3
-    })
-    
-    print("🔄 UI actualisée - Gain:", formatNumber(stats.TotalGain))
-end
-
-function recreateBrainrotTab()
-    if BrainrotManagerTab then
-        -- Fluent ne permet pas de supprimer une tab
-        -- Solution: notification à l'utilisateur
-        Fluent:Notify({
-            Title = "🔄 Actualisation",
-            Content = "Données mises à jour !",
-            Duration = 2
-        })
-        refreshBrainrotUI()
-    end
-end
-
--- ===============================================
--- 🎨 GUI CREATION
+-- 🎨 GUI CREATION (FLUENT UI)
 -- ===============================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-
--- ===============================================
--- 🎨 GUI CREATION - FLUENT
--- ===============================================
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "🎮 CuddlyTrain",
+    Title = "🎮 CuddlyTrain Auto Farm",
     SubTitle = "by AK♥",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
-    Acrylic = true,
+    Acrylic = true, -- Effet blur moderne
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.LeftControl
 })
 
 -- ===============================================
--- 📑 TABS
+-- 📁 TABS
 -- ===============================================
 
 local Tabs = {
     Main = Window:AddTab({ Title = "🏠 Principal", Icon = "home" }),
     Rarity = Window:AddTab({ Title = "🎯 Raretés", Icon = "star" }),
-    Brainrot = Window:AddTab({ Title = "🧠 Brainrot Manager", Icon = "brain" }),
     Settings = Window:AddTab({ Title = "⚙️ Paramètres", Icon = "settings" })
 }
 
@@ -1006,48 +740,59 @@ local Tabs = {
 -- 🏠 ONGLET PRINCIPAL
 -- ===============================================
 
-Tabs.Main:AddToggle("AutoUpgrade", {
+Tabs.Main:AddParagraph({
+    Title = "Automatisations",
+    Content = "Activez les fonctionnalités d'auto-farm"
+})
+
+local AutoUpgradeToggle = Tabs.Main:AddToggle("AutoUpgrade", {
     Title = "Auto Upgrade",
+    Description = "Améliore automatiquement les brainrots",
     Default = false,
     Callback = function(Value)
         Config.AutoUpgrade = Value
     end
 })
 
-Tabs.Main:AddToggle("AutoHatch", {
+local AutoHatchToggle = Tabs.Main:AddToggle("AutoHatch", {
     Title = "Auto Hatch",
+    Description = "Fait éclore les œufs automatiquement",
     Default = false,
     Callback = function(Value)
         Config.AutoHatch = Value
     end
 })
 
-Tabs.Main:AddToggle("AutoPlaceEgg", {
+local AutoPlaceEggToggle = Tabs.Main:AddToggle("AutoPlaceEgg", {
     Title = "Auto Place Egg",
+    Description = "Place les œufs sur les stands vides",
     Default = false,
     Callback = function(Value)
         Config.AutoPlaceEgg = Value
     end
 })
 
-Tabs.Main:AddToggle("AutoCollectBoxes", {
+local AutoCollectBoxesToggle = Tabs.Main:AddToggle("AutoCollectBoxes", {
     Title = "Auto Collect Boxes",
+    Description = "Collecte les boîtes automatiquement",
     Default = false,
     Callback = function(Value)
         Config.AutoCollectBoxes = Value
     end
 })
 
-Tabs.Main:AddToggle("AutoBuyEgg", {
+local AutoBuyEggToggle = Tabs.Main:AddToggle("AutoBuyEgg", {
     Title = "Auto Buy Egg",
+    Description = "Achète les œufs selon les critères définis",
     Default = false,
     Callback = function(Value)
         Config.AutoBuyEgg = Value
     end
 })
 
-Tabs.Main:AddToggle("AutoPickupWorst", {
+local AutoPickupWorstToggle = Tabs.Main:AddToggle("AutoPickupWorst", {
     Title = "Auto Pickup Worst",
+    Description = "Ramasse le pire brainrot quand il n'y a plus de place",
     Default = false,
     Callback = function(Value)
         Config.AutoPickupWorst = Value
@@ -1058,92 +803,145 @@ Tabs.Main:AddToggle("AutoPickupWorst", {
 -- 🎯 ONGLET RARETÉS
 -- ===============================================
 
-local rarityToggles = {
-    {"Divine", true},
-    {"GOD", true},
-    {"Event", true},
-    {"Limited", true},
-    {"OG", true},
-    {"Exclusive", true},
-    {"Exotic", true},
-    {"Secret", false},
-    {"Mythic", false},
-    {"Legendary", false},
-    {"Epic", false},
-    {"Rare", false},
-    {"Uncommon", false},
-    {"Common", false},
-    
-}
-
-for _, data in ipairs(rarityToggles) do
-    local name, default = data[1], data[2]
-    Tabs.Rarity:AddToggle("Rarity" .. name, {
-        Title = name,
-        Default = default,
-        Callback = function(Value)
-            RarityConfig[name] = Value
-        end
-    })
-end
-
--- ===============================================
--- 🧠 ONGLET BRAINROT MANAGER
--- ===============================================
-
-BrainrotManagerTab = Tabs.Brainrot
-
--- Section Stats Globales
-BrainrotManagerTab:AddSection("📊 Stats Globales")
-
-local initialStats = calculateGlobalStats()
-
-BrainrotManagerTab:AddParagraph({
-    Title = "💰 Gain Total/sec",
-    Content = "$" .. formatNumber(initialStats.TotalGain)
+Tabs.Rarity:AddParagraph({
+    Title = "Raretés à acheter",
+    Content = "Sélectionnez les raretés d'œufs que vous voulez acheter"
 })
 
-BrainrotManagerTab:AddParagraph({
-    Title = "📊 Stands occupés",
-    Content = tostring(initialStats.Occupied)
-})
-
-BrainrotManagerTab:AddParagraph({
-    Title = "⚪ Stands vides",
-    Content = tostring(initialStats.Empty)
-})
-
-BrainrotManagerTab:AddButton({
-    Title = "🔄 Refresh",
-    Description = "Actualiser toutes les données",
-    Callback = function()
-        refreshBrainrotUI()
+-- Raretés Premium
+Tabs.Rarity:AddToggle("RarityAdmin", {
+    Title = "Admin",
+    Default = RarityConfig.Admin,
+    Callback = function(Value)
+        RarityConfig.Admin = Value
     end
 })
 
--- Section Stands
-BrainrotManagerTab:AddSection("🎯 Stands")
-
--- Attendre que les données soient disponibles
-if #AllStandsData == 0 then
-    BrainrotManagerTab:AddParagraph({
-        Title = "⏳ Chargement...",
-        Content = "Les données des stands sont en cours de chargement.\nCliquez sur 'Refresh' dans quelques secondes."
-    })
-else
-    -- Créer les cartes pour chaque stand
-    for _, standData in ipairs(AllStandsData) do
-        createStandCard(standData, BrainrotManagerTab)
+Tabs.Rarity:AddToggle("RarityDivine", {
+    Title = "Divine",
+    Default = RarityConfig.Divine,
+    Callback = function(Value)
+        RarityConfig.Divine = Value
     end
-end
+})
+
+Tabs.Rarity:AddToggle("RarityGOD", {
+    Title = "GOD",
+    Default = RarityConfig.GOD,
+    Callback = function(Value)
+        RarityConfig.GOD = Value
+    end
+})
+
+Tabs.Rarity:AddToggle("RarityEvent", {
+    Title = "Event",
+    Default = RarityConfig.Event,
+    Callback = function(Value)
+        RarityConfig.Event = Value
+    end
+})
+
+Tabs.Rarity:AddToggle("RarityLimited", {
+    Title = "Limited",
+    Default = RarityConfig.Limited,
+    Callback = function(Value)
+        RarityConfig.Limited = Value
+    end
+})
+
+Tabs.Rarity:AddToggle("RarityOG", {
+    Title = "OG",
+    Default = RarityConfig.OG,
+    Callback = function(Value)
+        RarityConfig.OG = Value
+    end
+})
+
+Tabs.Rarity:AddToggle("RarityExclusive", {
+    Title = "Exclusive",
+    Default = RarityConfig.Exclusive,
+    Callback = function(Value)
+        RarityConfig.Exclusive = Value
+    end
+})
+
+Tabs.Rarity:AddToggle("RarityExotic", {
+    Title = "Exotic",
+    Default = RarityConfig.Exotic,
+    Callback = function(Value)
+        RarityConfig.Exotic = Value
+    end
+})
+
+-- Raretés Standard
+Tabs.Rarity:AddToggle("RaritySecret", {
+    Title = "Secret",
+    Default = RarityConfig.secret,
+    Callback = function(Value)
+        RarityConfig.secret = Value
+    end
+})
+
+Tabs.Rarity:AddToggle("RarityMythic", {
+    Title = "Mythic",
+    Default = RarityConfig.Mythic,
+    Callback = function(Value)
+        RarityConfig.Mythic = Value
+    end
+})
+
+Tabs.Rarity:AddToggle("RarityLegendary", {
+    Title = "Legendary",
+    Default = RarityConfig.Legendary,
+    Callback = function(Value)
+        RarityConfig.Legendary = Value
+    end
+})
+
+Tabs.Rarity:AddToggle("RarityEpic", {
+    Title = "Epic",
+    Default = RarityConfig.Epic,
+    Callback = function(Value)
+        RarityConfig.Epic = Value
+    end
+})
+
+Tabs.Rarity:AddToggle("RarityRare", {
+    Title = "Rare",
+    Default = RarityConfig.Rare,
+    Callback = function(Value)
+        RarityConfig.Rare = Value
+    end
+})
+
+Tabs.Rarity:AddToggle("RarityUncommon", {
+    Title = "Uncommon",
+    Default = RarityConfig.Uncommon,
+    Callback = function(Value)
+        RarityConfig.Uncommon = Value
+    end
+})
+
+Tabs.Rarity:AddToggle("RarityCommon", {
+    Title = "Common",
+    Default = RarityConfig.Common,
+    Callback = function(Value)
+        RarityConfig.Common = Value
+    end
+})
 
 -- ===============================================
 -- ⚙️ ONGLET PARAMÈTRES
 -- ===============================================
 
-Tabs.Settings:AddSlider("BoxCollectDelay", {
-    Title = "Box Collect Delay (s)",
-    Description = "Délai entre chaque collecte de boîtes",
+Tabs.Settings:AddParagraph({
+    Title = "Délais",
+    Content = "Configurez les délais entre les actions"
+})
+
+local BoxCollectDelaySlider = Tabs.Settings:AddSlider("BoxCollectDelay", {
+    Title = "Box Collect Delay",
+    Description = "Délai entre chaque collecte de boîtes (secondes)",
     Default = 30,
     Min = 1,
     Max = 120,
@@ -1153,9 +951,9 @@ Tabs.Settings:AddSlider("BoxCollectDelay", {
     end
 })
 
-Tabs.Settings:AddSlider("ActionDelay", {
-    Title = "Action Delay (s)",
-    Description = "Délai entre les actions",
+local ActionDelaySlider = Tabs.Settings:AddSlider("ActionDelay", {
+    Title = "Action Delay",
+    Description = "Délai entre les actions générales (secondes)",
     Default = 0.5,
     Min = 0.1,
     Max = 5,
@@ -1165,9 +963,9 @@ Tabs.Settings:AddSlider("ActionDelay", {
     end
 })
 
-Tabs.Settings:AddSlider("UpgradeDelay", {
-    Title = "Upgrade Delay (s)",
-    Description = "Délai entre les upgrades",
+local UpgradeDelaySlider = Tabs.Settings:AddSlider("UpgradeDelay", {
+    Title = "Upgrade Delay",
+    Description = "Délai entre chaque amélioration (secondes)",
     Default = 0.5,
     Min = 0.1,
     Max = 5,
@@ -1177,9 +975,9 @@ Tabs.Settings:AddSlider("UpgradeDelay", {
     end
 })
 
-Tabs.Settings:AddSlider("PickupWorstDelay", {
-    Title = "Pickup Worst Delay (s)",
-    Description = "Délai avant pickup du pire",
+local PickupWorstDelaySlider = Tabs.Settings:AddSlider("PickupWorstDelay", {
+    Title = "Pickup Worst Delay",
+    Description = "Délai entre chaque pickup du pire brainrot (secondes)",
     Default = 5,
     Min = 1,
     Max = 30,
@@ -1189,9 +987,62 @@ Tabs.Settings:AddSlider("PickupWorstDelay", {
     end
 })
 
-Tabs.Settings:AddSlider("TargetLevel", {
+-- Prix des œufs
+Tabs.Settings:AddParagraph({
+    Title = "Prix des œufs",
+    Content = "Définissez le prix minimum pour acheter les œufs"
+})
+
+local MinEggPriceDropdown = Tabs.Settings:AddDropdown("MinEggPrice", {
+    Title = "Prix minimum œuf",
+    Description = "Les œufs doivent coûter PLUS que cette valeur",
+    Values = {
+        "Désactivé",
+        "50M",
+        "100M",
+        "500M",
+        "750M",
+        "50B",
+        "100B",
+        "500B",
+        "750B",
+        "50T",
+        "100T",
+        "500T",
+        "750T",
+        "1Qa"
+    },
+    Multi = false,
+    Default = 1,
+    Callback = function(Value)
+        local selectedPrice = PricePresets[Value] or 0
+        Config.MinEggPrice = selectedPrice
+        
+        if selectedPrice > 0 then
+            Fluent:Notify({
+                Title = "Prix minimum activé",
+                Content = Value .. " = " .. selectedPrice,
+                Duration = 3
+            })
+        else
+            Fluent:Notify({
+                Title = "Prix minimum désactivé",
+                Content = "Tous les prix sont acceptés",
+                Duration = 3
+            })
+        end
+    end
+})
+
+-- Niveaux
+Tabs.Settings:AddParagraph({
+    Title = "Niveaux",
+    Content = "Configurez le niveau cible pour les upgrades"
+})
+
+local TargetLevelSlider = Tabs.Settings:AddSlider("TargetLevel", {
     Title = "Target Level",
-    Description = "Niveau cible pour les upgrades",
+    Description = "Niveau maximum pour les upgrades automatiques",
     Default = 45,
     Min = 1,
     Max = 100,
@@ -1201,20 +1052,41 @@ Tabs.Settings:AddSlider("TargetLevel", {
     end
 })
 
+-- Utilitaires
+Tabs.Settings:AddParagraph({
+    Title = "Utilitaires",
+    Content = "Actions diverses"
+})
+
 Tabs.Settings:AddButton({
-    Title = "❌ Détruire l'UI",
-    Description = "Fermer complètement l'interface",
+    Title = "Détruire l'UI",
+    Description = "Ferme complètement l'interface",
     Callback = function()
-        Window:Destroy()
+        Fluent:Destroy()
     end
 })
 
 -- ===============================================
--- 📢 NOTIFICATION DE DÉMARRAGE
+-- 🔧 SAVE MANAGER & INTERFACE MANAGER
+-- ===============================================
+
+SaveManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetFolder("CuddlyTrain/AutoFarm")
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+InterfaceManager:SetLibrary(Fluent)
+InterfaceManager:SetFolder("CuddlyTrain")
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+
+SaveManager:LoadAutoloadConfig()
+
+-- ===============================================
+-- 🎉 NOTIFICATION DE DÉMARRAGE
 -- ===============================================
 
 Fluent:Notify({
-    Title = "✅ Script chargé !",
-    Content = "Auto Farm Ultimate activé",
+    Title = "Script chargé !",
+    Content = "CuddlyTrain Auto Farm activé avec succès",
     Duration = 5
 })
