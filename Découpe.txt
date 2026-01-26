@@ -335,3 +335,94 @@ récuperer un brainrot sur un stand
 game:GetService("ReplicatedStorage").Shared.Packages.Networker["RE/PickupBrainrot"]:FireServer("Stand9")
 
 
+
+local Players=game:GetService("Players")
+local RS=game:GetService("ReplicatedStorage")
+local LP=Players.LocalPlayer
+local Net=RS.Shared.Packages.Networker
+
+local UpgradeRF=Net["RF/UpgradeBrainrot"]
+local PrestigeRE=Net["RE/Prestige"]
+local PickupRE=Net["RE/PickupBrainrot"]
+local PlaceEggRF=Net["RF/PlaceEgg"]
+local GetProfileDataRF=Net["RF/GetProfileData"]
+
+local TARGET={Stand2=true,Stand4=true,Stand6=true,Stand1=true,Stand3=true,Stand5=true}
+local lastPrestige={}
+local PRESTIGE_WAIT=80
+
+local function getPlot()
+    for _,p in ipairs(workspace.CoreObjects.Plots:GetChildren()) do
+        if p:GetAttribute("Owner")==LP.Name or p:GetAttribute("Owner")==LP.UserId then
+            return p
+        end
+    end
+end
+
+local function getEgg()
+    for _,t in ipairs(LP.Backpack:GetChildren()) do
+        if t:IsA("Tool") and t:GetAttribute("Egg")==true then
+            return t
+        end
+    end
+end
+
+while task.wait(0.5) do
+    local plot=getPlot()
+    if not plot then continue end
+    local stands=plot:FindFirstChild("Stands")
+    if not stands then continue end
+
+    for _,stand in ipairs(stands:GetChildren()) do
+        if not TARGET[stand.Name] then continue end
+
+        local model=stand:FindFirstChildOfClass("Model")
+        if not model then continue end -- œuf → rien
+
+        local level=model:GetAttribute("Level")
+        local rank=model:GetAttribute("Rank")
+
+        -- 🔼 UPGRADE SAFE (même logique que ton main)
+        if level and level>0 and level<50 then
+            UpgradeRF:InvokeServer(stand.Name)
+            task.wait(0.05)
+            break
+        end
+
+        -- 🔁 RANK 4 → SWAP
+        if rank==4 then
+            PickupRE:FireServer(stand.Name)
+            task.wait(0.3)
+            local egg=getEgg()
+            if egg then
+                egg.Parent=LP.Character
+                task.wait(0.1)
+                PlaceEggRF:InvokeServer(stand.Name,egg.Name)
+            end
+            break
+        end
+
+        -- 🏆 PRESTIGE
+        if level and level>=50 then
+            if lastPrestige[stand.Name] and tick()-lastPrestige[stand.Name]<PRESTIGE_WAIT then
+                continue
+            end
+
+            local profile=GetProfileDataRF:InvokeServer()
+            local br=profile and profile.PlotData and profile.PlotData.Stands
+                and profile.PlotData.Stands[stand.Name]
+                and profile.PlotData.Stands[stand.Name].BrainrotData
+
+            if br and br.Id then
+                PrestigeRE:FireServer(stand.Name,br.Id)
+                task.wait(0.4)
+                local tool=LP.Character and LP.Character:FindFirstChildOfClass("Tool")
+                if tool then
+                    PlaceEggRF:InvokeServer(stand.Name,tool.Name)
+                end
+                lastPrestige[stand.Name]=tick()
+                break
+            end
+        end
+    end
+end
