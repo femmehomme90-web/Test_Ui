@@ -1,0 +1,114 @@
+-- ===============================================
+-- 🧪 LISTE DES STANDS 2 / 4 / 6 (PROFILE DATA)
+-- ===============================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Networker = ReplicatedStorage.Shared.Packages.Networker
+
+task.wait(1)
+
+local GetProfileDataRF = Networker["RF/GetProfileData"]
+
+local profileData = GetProfileDataRF:InvokeServer()
+
+if not profileData then
+    warn("❌ ProfileData nil")
+    return
+end
+
+if not profileData.PlotData then
+    warn("❌ PlotData introuvable")
+    return
+end
+
+if not profileData.PlotData.Stands then
+    warn("❌ PlotData.Stands introuvable")
+    return
+end
+
+local TARGET_STANDS = {
+    Stand2 = true,
+    Stand4 = true,
+    Stand6 = true,
+}
+
+print("========== 📋 STANDS 2 / 4 / 6 ==========")
+
+for standName, standData in pairs(profileData.PlotData.Stands) do
+    if TARGET_STANDS[standName] then
+        print("\n🟦", standName)
+
+        if standData.BrainrotData then
+            local br = standData.BrainrotData
+
+            print("   🧠 BrainrotName :", br.BrainrotName, "| type:", typeof(br.BrainrotName))
+            print("   🆔 Id           :", br.Id, "| type:", typeof(br.Id))
+            print("   📈 Level        :", br.Level, "| type:", typeof(br.Level))
+            print("   ⭐ Rank         :", br.Rank, "| type:", typeof(br.Rank))
+            print("   ❤️ Favorited    :", br.Favorited, "| type:", typeof(br.Favorited))
+            print("   ⏱ LastCatchTime:", br.LastCatchTime, "| type:", typeof(br.LastCatchTime))
+        else
+            print("   ⚠️ Aucun BrainrotData sur ce stand")
+        end
+    end
+end
+
+print("========== ✅ FIN ==========")
+
+
+-- ===============================================
+-- 🧪 FULL PROFILE DATA DUMPER
+-- ===============================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Networker = ReplicatedStorage.Shared.Packages.Networker
+
+task.wait(1)
+
+local GetProfileDataRF = Networker["RF/GetProfileData"]
+
+local success, profileData = pcall(function()
+    return GetProfileDataRF:InvokeServer()
+end)
+
+if not success then
+    warn("❌ RF/GetProfileData a échoué")
+    return
+end
+
+if typeof(profileData) ~= "table" then
+    warn("❌ ProfileData n'est pas une table")
+    return
+end
+
+print("========== 🔍 PROFILE DATA ROOT KEYS ==========")
+
+for k, v in pairs(profileData) do
+    print("🗂️", k, "| type:", typeof(v))
+end
+
+print("========== 🔍 PROFILE DATA DEEP DUMP ==========")
+
+local function dumpTable(tbl, indent, visited)
+    visited = visited or {}
+    if visited[tbl] then
+        print(indent .. "↩️ (déjà visité)")
+        return
+    end
+    visited[tbl] = true
+
+    for k, v in pairs(tbl) do
+        local prefix = indent .. tostring(k) .. " (" .. typeof(v) .. ")"
+
+        if typeof(v) == "table" then
+            print(prefix)
+            dumpTable(v, indent .. "   ", visited)
+        else
+            print(prefix .. " = " .. tostring(v))
+        end
+    end
+end
+
+dumpTable(profileData, "")
+
+print("========== ✅ FIN DUMP PROFILE DATA ==========")

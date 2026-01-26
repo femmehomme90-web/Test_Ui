@@ -18,6 +18,9 @@ local PickupBrainrotRE = Networker["RE/PickupBrainrot"]
 local PickupBoxesRE = Networker["RE/PickupBoxes"]
 local RequestEggSpawnRF = Networker["RF/RequestEggSpawn"]
 local BuyEggRF = Networker["RF/BuyEgg"]
+local PrestigeRE = Networker["RE/Prestige"]
+local GetProfileDataRF = Networker["RF/GetProfileData"]
+
 
 -- ===============================================
 -- 📊 CONFIGURATION & VARIABLES
@@ -30,6 +33,8 @@ local Config = {
     AutoCollectBoxes = false,
     AutoBuyEgg = false,
     AutoPickupWorst = false,
+    AutoPrestige = false,
+    PrestigeDelay = 80,
     BoxCollectDelay = 30,
     ActionDelay = 0.5,
     UpgradeDelay = 0.5,
@@ -311,6 +316,107 @@ local function autoPickupWorst()
     
     LastPickupWorst = currentTime
 end
+
+-- ===============================================
+-- 🏆 AUTO PRESTIGE (STAND 2 / 4 / 6)
+-- ===============================================
+
+local TARGET_PRESTIGE_STANDS = {
+    Stand2 = true,
+    Stand4 = true,
+    Stand6 = true,
+}
+
+local LastPrestige = {}
+
+local function getBrainrotIdFromProfile(standName)
+    local profileData = GetProfileDataRF:InvokeServer()
+    if not profileData 
+        or not profileData.PlotData 
+        or not profileData.PlotData.Stands 
+        or not profileData.PlotData.Stands[standName] 
+        or not profileData.PlotData.Stands[standName].BrainrotData then
+        return nil
+    end
+
+    return profileData.PlotData.Stands[standName].BrainrotData.Id
+end
+
+
+local function autoPrestige()
+    if not Config.AutoPrestige then return end
+
+    local myPlot = getMyPlot()
+    if not myPlot then return end
+
+    local standsFolder = getStandsFolder(myPlot)
+    if not standsFolder then return end
+
+    for _, stand in ipairs(standsFolder:GetChildren()) do
+        
+        if not TARGET_PRESTIGE_STANDS[stand.Name] then
+            continue
+        end
+
+        local level = getBrainrotLevel(stand)
+
+        -- seulement niveau 50+
+        if level < 50 then
+            continue
+        end
+
+        -- anti spam
+        if LastPrestige[stand.Name] 
+        and tick() - LastPrestige[stand.Name] < Config.PrestigeDelay then
+            continue
+        end
+
+        print("🏆 PRESTIGE:", stand.Name, "| Level:", level)
+
+        -- récupère ID actuel
+        local id = getBrainrotIdFromProfile(stand.Name)
+
+        if not id then
+            warn("❌ ID introuvable pour", stand.Name)
+            continue
+        end
+
+        -- PRESTIGE
+        pcall(function()
+            PrestigeRE:FireServer(stand.Name, id)
+        end)
+
+        print("✅ Prestige envoyé:", stand.Name, "| ID:", id)
+
+        -- attendre que le brainrot soit dans la main
+        task.wait(0.5)
+
+        -- replacer sur le stand
+        local tool = LocalPlayer.Character 
+            and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+            or findEggTool()
+
+        if tool then
+            equipTool(tool)
+
+            pcall(function()
+                PlaceEggRF:InvokeServer(stand.Name, tool.Name)
+            end)
+
+            print("🥚 Reposé sur", stand.Name)
+        else
+            warn("⚠️ Aucun tool après prestige")
+        end
+
+        LastPrestige[stand.Name] = tick()
+
+        print("⏳ Attente hatch:", Config.PrestigeDelay, "sec")
+
+        -- attente 1m20
+        task.wait(Config.PrestigeDelay)
+    end
+end
+
 
 -- ===============================================
 -- 💰 AUTO BUY EGG FUNCTIONS
@@ -711,6 +817,7 @@ RunService.Heartbeat:Connect(function()
     autoPlaceEgg()
     autoCollectBoxes()
     autoBuyEgg()
+    autoPrestige()
 end)
 
 -- ===============================================
@@ -799,6 +906,15 @@ MainTab:CreateToggle({
    Flag = "AutoPickupWorst",
    Callback = function(Value)
       Config.AutoPickupWorst = Value
+   end,
+})
+
+MainTab:CreateToggle({
+   Name = "Auto Prestige",
+   CurrentValue = false,
+   Flag = "AutoPrestige",
+   Callback = function(Value)
+      Config.AutoPrestige = Value
    end,
 })
 
