@@ -14,6 +14,26 @@ local PRESTIGE_WAIT = 80
 
 -- ✅ CACHE DES NIVEAUX pour éviter de dépasser 50
 local levelCache = {}
+local lastCacheClear = tick()
+local CACHE_CLEAR_INTERVAL = 60 -- Nettoyage toutes les 60 secondes
+
+-- 🎲 FONCTION DE RANDOMISATION ANTI-DÉTECTION
+local function randomWait(min, max)
+    task.wait(math.random(min * 100, max * 100) / 100)
+end
+
+-- 🧹 NETTOYAGE AUTOMATIQUE DU CACHE
+local function clearCacheIfNeeded()
+    if tick() - lastCacheClear >= CACHE_CLEAR_INTERVAL then
+        local count = 0
+        for k, _ in pairs(levelCache) do
+            levelCache[k] = nil
+            count = count + 1
+        end
+        lastCacheClear = tick()
+        print("🧹 Cache nettoyé (" .. count .. " entrées supprimées)")
+    end
+end
 
 local function getPlot()
     for _, p in ipairs(workspace.CoreObjects.Plots:GetChildren()) do
@@ -57,7 +77,10 @@ local function upgradeAllSafe(stands)
                 
                 -- Si on approche 50, on ralentit
                 if level >= 48 then
-                    task.wait(0.1) -- Sécurité supplémentaire près de 50
+                    randomWait(0.1, 0.15) -- Sécurité supplémentaire près de 50
+                elseif upgraded % 3 == 0 then
+                    -- Délai aléatoire tous les 3 upgrades pour paraître humain
+                    randomWait(0.05, 0.1)
                 end
             end
         else
@@ -83,7 +106,7 @@ local function handlePrestigeAndSwap(stands)
         -- 🔁 RANK 4 → PICKUP SEULEMENT
         if rank == 4 then
             PickupRE:FireServer(stand.Name)
-            task.wait(0.3)
+            randomWait(0.25, 0.35) -- Délai randomisé
             levelCache[stand.Name] = 0 -- Reset cache
             print("🗑️ Pickup Rank 4:", stand.Name)
             return true
@@ -102,7 +125,7 @@ local function handlePrestigeAndSwap(stands)
             
             if br and br.Id then
                 PrestigeRE:FireServer(stand.Name, br.Id)
-                task.wait(0.4)
+                randomWait(0.35, 0.5) -- Délai randomisé
                 lastPrestige[stand.Name] = tick()
                 levelCache[stand.Name] = 0 -- Reset cache
                 print("🏆 Prestige:", stand.Name)
@@ -115,12 +138,19 @@ local function handlePrestigeAndSwap(stands)
 end
 
 -- ===============================================
--- 🔥 MAIN LOOP ULTRA-RAPIDE
+-- 🔥 MAIN LOOP ULTRA-RAPIDE AVEC RANDOMISATION
 -- ===============================================
 
 print("🚀 Prestige Bot Ultra-Rapide démarré!")
+print("🎲 Randomisation activée pour éviter la détection")
+print("🧹 Nettoyage de cache automatique toutes les 60 secondes")
 
-while task.wait(0.1) do -- Loop rapide
+while true do
+    randomWait(0.08, 0.15) -- Loop randomisée (au lieu de 0.1 fixe)
+    
+    -- 🧹 Nettoyage périodique du cache
+    clearCacheIfNeeded()
+    
     local plot = getPlot()
     if not plot then continue end
     
@@ -140,6 +170,6 @@ while task.wait(0.1) do -- Loop rapide
     local actionDone = handlePrestigeAndSwap(standsArray)
     
     if actionDone then
-        task.wait(0.5) -- Petite pause après prestige/swap
+        randomWait(0.4, 0.6) -- Petite pause randomisée après prestige/swap
     end
 end
