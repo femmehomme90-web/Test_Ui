@@ -321,27 +321,31 @@ end
 -- 🏆 AUTO PRESTIGE (STAND 2 / 4 / 6)
 -- ===============================================
 
-local TARGET_PRESTIGE_STANDS = {
-    Stand2 = true,
-    Stand4 = true,
-    Stand6 = true,
+-- ===============================================
+-- 🧬 AUTO PRESTIGE SYSTEM (Stand 2 / 4 / 6)
+-- ===============================================
+
+local PrestigeRE = Networker["RE/Prestige"]
+
+local prestigeLocks = {
+    Stand2 = false,
+    Stand4 = false,
+    Stand6 = false,
 }
 
-local LastPrestige = {}
-
-local function getBrainrotIdFromProfile(standName)
+local function getBrainrotDataFromProfile(standName)
+    local GetProfileDataRF = Networker["RF/GetProfileData"]
     local profileData = GetProfileDataRF:InvokeServer()
-    if not profileData 
-        or not profileData.PlotData 
-        or not profileData.PlotData.Stands 
-        or not profileData.PlotData.Stands[standName] 
-        or not profileData.PlotData.Stands[standName].BrainrotData then
+
+    if not profileData or not profileData.PlotData 
+    or not profileData.PlotData.Stands 
+    or not profileData.PlotData.Stands[standName]
+    or not profileData.PlotData.Stands[standName].BrainrotData then
         return nil
     end
 
-    return profileData.PlotData.Stands[standName].BrainrotData.Id
+    return profileData.PlotData.Stands[standName].BrainrotData
 end
-
 
 local function autoPrestige()
     if not Config.AutoPrestige then return end
@@ -352,70 +356,96 @@ local function autoPrestige()
     local standsFolder = getStandsFolder(myPlot)
     if not standsFolder then return end
 
-    for _, stand in ipairs(standsFolder:GetChildren()) do
-        
-        if not TARGET_PRESTIGE_STANDS[stand.Name] then
+    for standName, enabled in pairs(PRESTIGE_STANDS) do
+        if not enabled then continue end
+        if prestigeLocks[standName] then continue end
+
+        local stand = standsFolder:FindFirstChild(standName)
+        if not stand then continue end
+
+        -- Vérifie qu'il y a un brainrot
+        if getStandState(stand) ~= "Brainrot" then
             continue
         end
 
         local level = getBrainrotLevel(stand)
-
-        -- seulement niveau 50+
-        if level < 50 then
+        if level < Config.PrestigeLevel then
             continue
         end
 
-        -- anti spam
-        if LastPrestige[stand.Name] 
-        and tick() - LastPrestige[stand.Name] < Config.PrestigeDelay then
-            continue
-        end
+        prestigeLocks[standName] = true
 
-        print("🏆 PRESTIGE:", stand.Name, "| Level:", level)
+        task.spawn(function()
+            print("🌟 PRESTIGE :", standName)
 
-        -- récupère ID actuel
-        local id = getBrainrotIdFromProfile(stand.Name)
+            -- 🔍 Récupération ID depuis ProfileData
+            local brData = getBrainrotDataFromProfile(standName)
+            if not brData or not brData.Id then
+                warn("❌ Impossible de récupérer l'ID pour", standName)
+                prestigeLocks[standName] = false
+                return
+            end
 
-        if not id then
-            warn("❌ ID introuvable pour", stand.Name)
-            continue
-        end
+            local brainrotId = brData.Id
+            local brainrotName = brData.BrainrotName
 
-        -- PRESTIGE
-        pcall(function()
-            PrestigeRE:FireServer(stand.Name, id)
-        end)
+            print("🧠 Brainrot:", brainrotName, "| ID:", brainrotId)
 
-        print("✅ Prestige envoyé:", stand.Name, "| ID:", id)
-
-        -- attendre que le brainrot soit dans la main
-        task.wait(0.5)
-
-        -- replacer sur le stand
-        local tool = LocalPlayer.Character 
-            and LocalPlayer.Character:FindFirstChildOfClass("Tool")
-            or findEggTool()
-
-        if tool then
-            equipTool(tool)
-
+            -- ⭐ PRESTIGE
             pcall(function()
-                PlaceEggRF:InvokeServer(stand.Name, tool.Name)
+                PrestigeRE:FireServer(standName, brainrotId)
             end)
 
-            print("🥚 Reposé sur", stand.Name)
-        else
-            warn("⚠️ Aucun tool après prestige")
-        end
+            print("✅ Prestige effectué :", standName)
 
-        LastPrestige[stand.Name] = tick()
+            -- ⏱ petite sécurité
+            task.wait(1)
 
-        print("⏳ Attente hatch:", Config.PrestigeDelay, "sec")
+            -- 🥚 L'œuf est dans la main → on le remet dans le backpack
+            local char = LocalPlayer.Character
+            if char then
+                for _, tool in ipairs(char:GetChildren()) do
+                    if tool:IsA("Tool") then
+                        tool.Parent = Backpack
+                    end
+                end
+            end
 
-        -- attente 1m20
-        task.wait(Config.PrestigeDelay)
+            task.wait(0.5)
+
+            -- 📦 Trouver l'œuf
+            local eggTool = findEggTool()
+            if not eggTool then
+                warn("❌ Aucun œuf trouvé après prestige")
+                prestigeLocks[standName] = false
+                return
+            end
+
+            -- 🧱 Reposer sur le même stand
+            equipTool(eggTool)
+
+            pcall(function()
+                PlaceEggRF:InvokeServer(standName, eggTool.Name)
+            end)
+
+            print("🥚 Œuf reposé sur", standName)
+
+            -- ⏳ Attente incubation
+            print("⏱ Incubation 80s sur", standName)
+            task.wait(Config.PrestigeWait)
+
+            -- 🐣 Hatch
+            pcall(function()
+                HatchEggRE:FireServer(standName, brainrotName)
+            end)
+
+            print("🐣 Hatch effectué sur", standName)
+
+            prestigeLocks[standName] = false
+        end)
     end
 end
+
 
 
 -- ===============================================
