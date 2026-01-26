@@ -34,7 +34,25 @@ local Config = {
     ActionDelay = 0.5,
     UpgradeDelay = 0.5,
     TargetLevel = 45,
-    PickupWorstDelay = 5
+    PickupWorstDelay = 5,
+    MinEggPrice = 0
+}
+
+local PricePresets = {
+    ["Désactivé"] = 0,
+    ["50M"] = 50000000,
+    ["100M"] = 100000000,
+    ["500M"] = 500000000,
+    ["750M"] = 750000000,
+    ["50B"] = 50000000000,
+    ["100B"] = 100000000000,
+    ["500B"] = 500000000000,
+    ["750B"] = 750000000000,
+    ["50T"] = 50000000000000,
+    ["100T"] = 100000000000000,
+    ["500T"] = 500000000000000,
+    ["750T"] = 750000000000000,
+    ["1Qa"] = 1000000000000000
 }
 
 local RarityConfig = {
@@ -427,26 +445,35 @@ local function buyEgg(eggName)
 end
 
 local function decideAction(egg, cash, gainPerSec)
-        
+    
+    print("🔍 DEBUG - Rareté:", egg.rarity, "| Autorisée?", RarityConfig[egg.rarity])
+    print("💰 DEBUG - Prix œuf:", egg.price, "| Prix min config:", Config.MinEggPrice)
+    
     -- Cas 1 : Rareté non autorisée → CHANGER
     if not RarityConfig[egg.rarity] then
         print("❌ CHANGE → Rareté non autorisée")
         return "CHANGE"
     end
     
-    -- Cas 2 : Cash suffisant → ACHETER
+    -- Cas 2 : Prix pas assez élevé (strictement supérieur) → CHANGER
+    if Config.MinEggPrice > 0 and egg.price <= Config.MinEggPrice then
+        print("❌ CHANGE → Prix trop bas ou égal (", egg.price, "<=", Config.MinEggPrice, ")")
+        return "CHANGE"
+    end
+    
+    -- Cas 3 : Cash suffisant → ACHETER
     if cash >= egg.price then
-        print(egg.name)
         print("✅ BUY → Cash suffisant")
         return "BUY"
     end
     
-    -- Cas 3 : Pas de production → CHANGER
+    -- Cas 4 : Pas de production → CHANGER
     if gainPerSec <= 0 then
+        print("❌ CHANGE → Pas de production")
         return "CHANGE"
     end
     
-    -- Cas 4 : Calculer le temps d'attente
+    -- Cas 5 : Calculer le temps d'attente
     local waitTime = (egg.price - cash) / gainPerSec
     local hours = math.floor(waitTime / 3600)
     local minutes = math.floor((waitTime % 3600) / 60)
@@ -454,12 +481,13 @@ local function decideAction(egg, cash, gainPerSec)
     
     print(string.format("⏳ Temps estimé : %dh %dm %ds", hours, minutes, seconds))
     
-    -- Cas 5 : Temps d'attente trop long → CHANGER
+    -- Cas 6 : Temps d'attente trop long → CHANGER
     if waitTime > MAX_WAIT_SECONDS then
+        print("❌ CHANGE → Attente trop longue")
         return "CHANGE"
     end
     
-    -- Cas 6 : Temps acceptable → ATTENDRE
+    -- Cas 7 : Temps acceptable → ATTENDRE
     print(string.format("⏰ WAIT → Attente de %dh %dm %ds", hours, minutes, seconds))
     return "WAIT", waitTime
 end
@@ -782,7 +810,7 @@ local RaritySection = RarityTab:CreateSection("Raretés à acheter")
 
 RarityTab:CreateToggle({
    Name = "Admin",
-   CurrentValue = true,
+   CurrentValue = RarityConfig.Admin, -- ✅ Utilise la valeur du code
    Flag = "RarityAdmin",
    Callback = function(Value)
       RarityConfig.Admin = Value
@@ -791,7 +819,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "Common",
-   CurrentValue = false,
+   CurrentValue = RarityConfig.Common,
    Flag = "RarityCommon",
    Callback = function(Value)
       RarityConfig.Common = Value
@@ -800,7 +828,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "Divine",
-   CurrentValue = true,
+   CurrentValue = RarityConfig.Divine,
    Flag = "RarityDivine",
    Callback = function(Value)
       RarityConfig.Divine = Value
@@ -809,7 +837,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "Epic",
-   CurrentValue = false,
+   CurrentValue = RarityConfig.Epic,
    Flag = "RarityEpic",
    Callback = function(Value)
       RarityConfig.Epic = Value
@@ -818,7 +846,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "Event",
-   CurrentValue = true,
+   CurrentValue = RarityConfig.Event,
    Flag = "RarityEvent",
    Callback = function(Value)
       RarityConfig.Event = Value
@@ -827,7 +855,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "Exclusive",
-   CurrentValue = true,
+   CurrentValue = RarityConfig.Exclusive,
    Flag = "RarityExclusive",
    Callback = function(Value)
       RarityConfig.Exclusive = Value
@@ -836,7 +864,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "Exotic",
-   CurrentValue = true,
+   CurrentValue = RarityConfig.Exotic,
    Flag = "RarityExotic",
    Callback = function(Value)
       RarityConfig.Exotic = Value
@@ -845,7 +873,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "GOD",
-   CurrentValue = true,
+   CurrentValue = RarityConfig.GOD,
    Flag = "RarityGOD",
    Callback = function(Value)
       RarityConfig.GOD = Value
@@ -854,7 +882,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "Legendary",
-   CurrentValue = false,
+   CurrentValue = RarityConfig.Legendary,
    Flag = "RarityLegendary",
    Callback = function(Value)
       RarityConfig.Legendary = Value
@@ -863,7 +891,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "Limited",
-   CurrentValue = true,
+   CurrentValue = RarityConfig.Limited,
    Flag = "RarityLimited",
    Callback = function(Value)
       RarityConfig.Limited = Value
@@ -872,7 +900,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "Mythic",
-   CurrentValue = false,
+   CurrentValue = RarityConfig.Mythic,
    Flag = "RarityMythic",
    Callback = function(Value)
       RarityConfig.Mythic = Value
@@ -881,7 +909,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "OG",
-   CurrentValue = true,
+   CurrentValue = RarityConfig.OG,
    Flag = "RarityOG",
    Callback = function(Value)
       RarityConfig.OG = Value
@@ -890,7 +918,7 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "Rare",
-   CurrentValue = false,
+   CurrentValue = RarityConfig.Rare,
    Flag = "RarityRare",
    Callback = function(Value)
       RarityConfig.Rare = Value
@@ -899,16 +927,16 @@ RarityTab:CreateToggle({
 
 RarityTab:CreateToggle({
    Name = "Secret",
-   CurrentValue = false,
+   CurrentValue = RarityConfig.secret, -- ⚠️ Attention : "secret" en minuscule dans ton code
    Flag = "RaritySecret",
    Callback = function(Value)
-      RarityConfig.Secret = Value
+      RarityConfig.secret = Value -- Garde la cohérence avec ton code
    end,
 })
 
 RarityTab:CreateToggle({
    Name = "Uncommon",
-   CurrentValue = false,
+   CurrentValue = RarityConfig.Uncommon,
    Flag = "RarityUncommon",
    Callback = function(Value)
       RarityConfig.Uncommon = Value
@@ -943,6 +971,8 @@ SettingsTab:CreateSlider({
    end,
 })
 
+
+
 SettingsTab:CreateSlider({
    Name = "Upgrade Delay (s)",
    Range = {0.1, 5},
@@ -975,6 +1005,41 @@ SettingsTab:CreateSlider({
    Flag = "TargetLevel",
    Callback = function(Value)
       Config.TargetLevel = Value
+   end,
+})
+
+local PriceSection = SettingsTab:CreateSection("Prix des œufs")
+
+SettingsTab:CreateDropdown({
+   Name = "Prix minimum œuf",
+   Options = {
+      "Désactivé",
+      "50M",
+      "100M",
+      "500M",
+      "750M",
+      "50B",
+      "100B",
+      "500B",
+      "750B",
+      "50T",
+      "100T",
+      "500T",
+      "750T",
+      "1Qa"
+   },
+   CurrentOption = {"Désactivé"},
+   MultipleOptions = false,
+   Flag = "MinEggPriceDropdown",
+   Callback = function(Option)
+      local selectedPrice = PricePresets[Option[1]] or 0
+      Config.MinEggPrice = selectedPrice
+      
+      if selectedPrice > 0 then
+         print("💰 Prix minimum activé:", Option[1], "=", selectedPrice)
+      else
+         print("💰 Prix minimum désactivé")
+      end
    end,
 })
 
