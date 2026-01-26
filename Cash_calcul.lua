@@ -18,8 +18,6 @@ local PickupBrainrotRE = Networker["RE/PickupBrainrot"]
 local PickupBoxesRE = Networker["RE/PickupBoxes"]
 local RequestEggSpawnRF = Networker["RF/RequestEggSpawn"]
 local BuyEggRF = Networker["RF/BuyEgg"]
-local PrestigeRE = Networker["RE/Prestige"]
-local GetProfileDataRF = Networker["RF/GetProfileData"]
 
 -- ===============================================
 -- 📊 CONFIGURATION & VARIABLES
@@ -32,14 +30,11 @@ local Config = {
     AutoCollectBoxes = false,
     AutoBuyEgg = false,
     AutoPickupWorst = false,
-    AutoPrestige = false,
     BoxCollectDelay = 30,
     ActionDelay = 0.5,
     UpgradeDelay = 0.5,
     TargetLevel = 45,
     PickupWorstDelay = 5,
-    PrestigeDelay = 0.1,
-    PrestigeWait = 80,
     MinEggPrice = 0
 }
 
@@ -85,14 +80,10 @@ local LastHatch = 0
 local LastPlaceEgg = 0
 local LastBuyEgg = 0
 local LastPickupWorst = 0
+
+
 local MAX_WAIT_SECONDS = 60 * 60 -- 30 minutes
 local buyEggLocked = false
-local lastPrestige = {}
-local levelCache = {}
-local lastCacheClear = tick()
-local CACHE_CLEAR_INTERVAL = 60
-
-
 -- ===============================================
 -- 🔧 UTILITY FUNCTIONS
 -- ===============================================
@@ -319,90 +310,6 @@ local function autoPickupWorst()
     end
     
     LastPickupWorst = currentTime
-end
-
-local function randomWait(min, max)
-    task.wait(math.random(min * 100, max * 100) / 100)
-end
-
-local function clearCacheIfNeeded()
-    if tick() - lastCacheClear >= CACHE_CLEAR_INTERVAL then
-        local count = 0
-        for k, _ in pairs(levelCache) do
-            levelCache[k] = nil
-            count = count + 1
-        end
-        lastCacheClear = tick()
-        print("🧹 Cache nettoyé (" .. count .. " entrées supprimées)")
-    end
-end
-
-local function getBrainrotRank(stand)
-    local model = stand:FindFirstChildOfClass("Model")
-    if model then
-        return model:GetAttribute("Rank")
-    end
-    return nil
-end
-
-local function handlePrestigeAndSwap(standsFolder)
-    if not Config.AutoPrestige then return false end
-    
-    for _, stand in ipairs(standsFolder:GetChildren()) do
-        if not isValidStandName(stand) then continue end
-        
-        local model = stand:FindFirstChildOfClass("Model")
-        if not model then continue end
-        
-        local level = model:GetAttribute("Level")
-        local rank = model:GetAttribute("Rank")
-        
-        -- 🔁 RANK 4 → PICKUP
-        if rank == 4 then
-            local success = pcall(function()
-                PickupBrainrotRE:FireServer(stand.Name)
-            end)
-            if success then
-                randomWait(0.25, 0.35)
-                levelCache[stand.Name] = 0
-                print("🗑️ Pickup Rank 4:", stand.Name)
-                return true
-            end
-        end
-        
-        -- 🏆 PRESTIGE (niveau 50+)
-        if level and level >= 50 then
-            if lastPrestige[stand.Name] and tick() - lastPrestige[stand.Name] < Config.PrestigeWait then
-                continue
-            end
-            
-            local success, profile = pcall(function()
-                return GetProfileDataRF:InvokeServer()
-            end)
-            
-            if not success then continue end
-            
-            local br = profile and profile.PlotData and profile.PlotData.Stands
-                and profile.PlotData.Stands[stand.Name]
-                and profile.PlotData.Stands[stand.Name].BrainrotData
-            
-            if br and br.Id then
-                local prestigeSuccess = pcall(function()
-                    PrestigeRE:FireServer(stand.Name, br.Id)
-                end)
-                
-                if prestigeSuccess then
-                    randomWait(0.35, 0.5)
-                    lastPrestige[stand.Name] = tick()
-                    levelCache[stand.Name] = 0
-                    print("🏆 Prestige:", stand.Name)
-                    return true
-                end
-            end
-        end
-    end
-    
-    return false
 end
 
 -- ===============================================
@@ -795,34 +702,6 @@ task.spawn(function()
     end
 end)
 
-task.spawn(function()
-    print("🚀 Prestige Bot démarré!")
-    print("🎲 Randomisation activée")
-    
-    while true do
-        randomWait(0.08, 0.15)
-        
-        if not Config.AutoPrestige then
-            task.wait(1)
-            continue
-        end
-        
-        clearCacheIfNeeded()
-        
-        local myPlot = getMyPlot()
-        if not myPlot then continue end
-        
-        local standsFolder = getStandsFolder(myPlot)
-        if not standsFolder then continue end
-        
-        local actionDone = handlePrestigeAndSwap(standsFolder)
-        
-        if actionDone then
-            randomWait(0.4, 0.6)
-        end
-    end
-end)
-
 -- ===============================================
 -- 🔄 MAIN LOOP
 -- ===============================================
@@ -920,15 +799,6 @@ MainTab:CreateToggle({
    Flag = "AutoPickupWorst",
    Callback = function(Value)
       Config.AutoPickupWorst = Value
-   end,
-})
-
-MainTab:CreateToggle({
-   Name = "Auto Prestige/Swap",
-   CurrentValue = false,
-   Flag = "AutoPrestige",
-   Callback = function(Value)
-      Config.AutoPrestige = Value
    end,
 })
 
@@ -1122,28 +992,6 @@ SettingsTab:CreateSlider({
    Flag = "PickupWorstDelay",
    Callback = function(Value)
       Config.PickupWorstDelay = Value
-   end,
-})
-
-SettingsTab:CreateSlider({
-   Name = "Prestige Loop Delay (s)",
-   Range = {0.05, 1},
-   Increment = 0.05,
-   CurrentValue = 0.1,
-   Flag = "PrestigeDelay",
-   Callback = function(Value)
-      Config.PrestigeDelay = Value
-   end,
-})
-
-SettingsTab:CreateSlider({
-   Name = "Prestige Cooldown (s)",
-   Range = {10, 300},
-   Increment = 10,
-   CurrentValue = 80,
-   Flag = "PrestigeWait",
-   Callback = function(Value)
-      Config.PrestigeWait = Value
    end,
 })
 
