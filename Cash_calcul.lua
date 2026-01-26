@@ -18,6 +18,8 @@ local PickupBrainrotRE = Networker["RE/PickupBrainrot"]
 local PickupBoxesRE = Networker["RE/PickupBoxes"]
 local RequestEggSpawnRF = Networker["RF/RequestEggSpawn"]
 local BuyEggRF = Networker["RF/BuyEgg"]
+local PrestigeRE = Networker["RE/Prestige"]
+local GetProfileDataRF = Networker["RF/GetProfileData"]
 
 -- ===============================================
 -- 📊 CONFIGURATION & VARIABLES
@@ -37,17 +39,6 @@ local Config = {
     PickupWorstDelay = 5,
     MinEggPrice = 0
 }
-
-local TARGET = {
-    Stand1=true, Stand2=true, Stand3=true, Stand4=true,
-    Stand5=true, Stand6=true, Stand7=true, Stand8=true
-}
-
-local lastPrestige = {}
-local PRESTIGE_WAIT = 80
-
--- Cache anti dépassement lvl 50
-local levelCache = {}
 
 local PricePresets = {
     ["Désactivé"] = 0,
@@ -95,6 +86,22 @@ local LastPickupWorst = 0
 
 local MAX_WAIT_SECONDS = 60 * 60 -- 30 minutes
 local buyEggLocked = false
+
+local PrestigeConfig = {
+    AutoPrestige = false,
+    AutoSwapRank4 = false,
+    PrestigeDelay = 80,  -- Temps entre deux prestiges du même stand
+    TargetStands = {
+        Stand1 = true, Stand2 = true, Stand3 = true, 
+        Stand4 = true, Stand5 = true, Stand6 = true,
+        Stand7 = true, Stand8 = true
+    }
+}
+
+local levelCache = {}  -- Cache pour éviter de dépasser 50
+local lastPrestige = {}  -- Cooldown entre prestiges
+local LastPrestigeCheck = 0
+
 -- ===============================================
 -- 🔧 UTILITY FUNCTIONS
 -- ===============================================
@@ -124,43 +131,6 @@ local function getMyPlot()
 
     warn("No plot")
 end
-
--- ✅ UPGRADE BATCH RAPIDE (prestige engine)
-local function upgradeAllSafe(stands)
-    local upgraded = 0
-
-    for _, stand in ipairs(stands) do
-        if not TARGET[stand.Name] then continue end
-
-        local model = stand:FindFirstChildOfClass("Model")
-        if not model then continue end
-
-        local level = model:GetAttribute("Level")
-
-        if level and level > 0 and level < 50 then
-            local cachedLevel = levelCache[stand.Name] or 0
-            if cachedLevel >= 50 then continue end
-
-            local success = pcall(function()
-                UpgradeBrainrotRF:InvokeServer(stand.Name)
-            end)
-
-            if success then
-                levelCache[stand.Name] = level + 1
-                upgraded += 1
-
-                if level >= 48 then
-                    task.wait(0.1)
-                end
-            end
-        else
-            levelCache[stand.Name] = level or 0
-        end
-    end
-
-    return upgraded
-end
-
 
 local function getStandsFolder(plot)
     local stands = plot:FindFirstChild("Stands")
@@ -359,75 +329,6 @@ local function autoPickupWorst()
     
     LastPickupWorst = currentTime
 end
-
--- ✅ PRESTIGE / PICKUP (sans œuf)
-local function handlePrestigeAndSwap(stands)
-    for _, stand in ipairs(stands) do
-        if not TARGET[stand.Name] then continue end
-
-        local model = stand:FindFirstChildOfClass("Model")
-        if not model then continue end
-
-        local level = model:GetAttribute("Level")
-        local rank  = model:GetAttribute("Rank")
-
-        -- 🔁 Rank 4 = pickup immédiat
-        if rank == 4 then
-            PickupBrainrotRE:FireServer(stand.Name)
-            task.wait(0.3)
-            levelCache[stand.Name] = 0
-            print("🗑️ Pickup Rank 4:", stand.Name)
-            return true
-        end
-
-        -- 🏆 Prestige niveau 50
-        if level and level >= 50 then
-            if lastPrestige[stand.Name]
-            and tick() - lastPrestige[stand.Name] < PRESTIGE_WAIT then
-                continue
-            end
-
-            local profile = GetProfileDataRF:InvokeServer()
-            local br = profile
-                and profile.PlotData
-                and profile.PlotData.Stands
-                and profile.PlotData.Stands[stand.Name]
-                and profile.PlotData.Stands[stand.Name].BrainrotData
-
-            if br and br.Id then
-                PrestigeRE:FireServer(stand.Name, br.Id)
-                task.wait(0.4)
-                lastPrestige[stand.Name] = tick()
-                levelCache[stand.Name] = 0
-                print("🏆 Prestige:", stand.Name)
-                return true
-            end
-        end
-    end
-
-    return false
-end
-
-local function prestigeTick()
-    if not Config.AutoPrestige then return end
-
-    local plot = getMyPlot()
-    if not plot then return end
-
-    local stands = plot:FindFirstChild("Stands")
-    if not stands then return end
-
-    local standsArray = stands:GetChildren()
-
-    -- Phase 1 : upgrades massifs
-    upgradeAllSafe(standsArray)
-
-    -- Phase 2 : prestige / pickup (1 action max)
-    if handlePrestigeAndSwap(standsArray) then
-        task.wait(0.5)
-    end
-end
-
 
 -- ===============================================
 -- 💰 AUTO BUY EGG FUNCTIONS
@@ -661,8 +562,14 @@ local function autoBuyEgg()
     LastBuyEgg = tick()
 end
 
+
+
 -- ===============================================
 -- 🎯 AUTO FUNCTIONS
+-- ===============================================
+
+-- ===============================================
+-- 🎯 AUTO UPGRADE ULTRA-SÉCURISÉ (MAX 50)
 -- ===============================================
 
 task.spawn(function()
@@ -684,21 +591,45 @@ task.spawn(function()
                 continue
             end
             
-            local level = getBrainrotLevel(stand)
+            local model = stand:FindFirstChildOfClass("Model")
+            if not model then continue end
             
-            if level > 0 and level < Config.TargetLevel then
+            local level = model:GetAttribute("Level")
+            
+            local cachedLevel = levelCache[stand.Name] or 0
+            if cachedLevel >= 50 then
+                continue
+            end
+            
+            -- Sécurité 2 : Vérif niveau réel
+            if not level or level >= 50 then
+                levelCache[stand.Name] = level or 50
+                continue
+            end
+            
+            -- Sécurité 3 : Stop à 49 (on upgrade 49→50, mais JAMAIS 50→51)
+            if level < 50 then
                 local success, err = pcall(function()
                     UpgradeBrainrotRF:InvokeServer(stand.Name)
                 end)
                 
                 if success then
-                    print("✅ Upgraded", stand.Name, "| Niveau:", level, "→", level + 1)
+                    -- Mise à jour cache
+                    local newLevel = level + 1
+                    levelCache[stand.Name] = newLevel
+                    
+                    if newLevel == 50 then
+                        print("🎯 NIVEAU 50 ATTEINT:", stand.Name)
+                    end
                 else
                     warn("❌ Erreur upgrade:", err)
                 end
                 
                 task.wait(Config.ActionDelay)
-                break  -- Un seul upgrade par cycle
+                break  
+            else
+                
+                levelCache[stand.Name] = level
             end
         end
     end
@@ -819,6 +750,160 @@ task.spawn(function()
     end
 end)
 
+task.spawn(function()
+    while true do
+        task.wait(Config.UpgradeDelay)
+        
+        if not Config.AutoUpgrade then
+            continue
+        end
+        
+        local myPlot = getMyPlot()
+        if not myPlot then continue end
+        
+        local standsFolder = getStandsFolder(myPlot)
+        if not standsFolder then continue end
+        
+        for _, stand in ipairs(standsFolder:GetChildren()) do
+            if not isValidStandName(stand) then
+                continue
+            end
+            
+            local level = getBrainrotLevel(stand)
+            
+            -- 🛡️ SÉCURITÉ ANTI-DÉPASSEMENT
+            local cachedLevel = levelCache[stand.Name] or 0
+            
+            -- Si le cache dit qu'on est à 50+, on skip
+            if cachedLevel >= 50 then
+                continue
+            end
+            
+            -- Si le niveau détecté est 49, on met à jour le cache et on skip
+            if level >= 49 then
+                levelCache[stand.Name] = level
+                continue
+            end
+            
+            -- Upgrade normal
+            if level > 0 and level < Config.TargetLevel then
+                local success, err = pcall(function()
+                    UpgradeBrainrotRF:InvokeServer(stand.Name)
+                end)
+                
+                if success then
+                    -- Mise à jour cache
+                    levelCache[stand.Name] = level + 1
+                    print("✅ Upgraded", stand.Name, "| Niveau:", level, "→", level + 1)
+                else
+                    warn("❌ Erreur upgrade:", err)
+                end
+                
+                task.wait(Config.ActionDelay)
+                break  -- Un seul upgrade par cycle
+            else
+                -- Mise à jour cache même si pas d'upgrade
+                levelCache[stand.Name] = level
+            end
+        end
+    end
+end)
+
+-- ===============================================
+-- 🏆 AUTO PRESTIGE & SWAP RANK 4
+-- ===============================================
+
+-- ===============================================
+-- 🏆 AUTO PRESTIGE (UNIQUEMENT NIVEAU 50)
+-- ===============================================
+
+local function autoPrestige()
+    if not PrestigeConfig.AutoPrestige and not PrestigeConfig.AutoSwapRank4 then
+        return
+    end
+    
+    local currentTime = tick()
+    if currentTime - LastPrestigeCheck < 2 then
+        return
+    end
+    
+    local myPlot = getMyPlot()
+    if not myPlot then return end
+    
+    local standsFolder = getStandsFolder(myPlot)
+    if not standsFolder then return end
+    
+    for _, stand in ipairs(standsFolder:GetChildren()) do
+        if not PrestigeConfig.TargetStands[stand.Name] then
+            continue
+        end
+        
+        local model = stand:FindFirstChildOfClass("Model")
+        if not model then continue end
+        
+        local level = model:GetAttribute("Level")
+        local rank = model:GetAttribute("Rank")
+        
+        -- 🗑️ SWAP RANK 4 (si activé)
+        if PrestigeConfig.AutoSwapRank4 and rank == 4 then
+            local success = pcall(function()
+                PickupBrainrotRE:FireServer(stand.Name)
+            end)
+            
+            if success then
+                levelCache[stand.Name] = 0
+                print("🗑️ Pickup Rank 4:", stand.Name)
+                LastPrestigeCheck = tick()
+                task.wait(0.5)
+                return
+            end
+        end
+        
+        -- 🏆 PRESTIGE (EXACTEMENT niveau 50, ni plus ni moins)
+        if PrestigeConfig.AutoPrestige and level == 50 then  -- ✅ == 50 (pas >=)
+            
+            -- Vérif cooldown
+            if lastPrestige[stand.Name] and tick() - lastPrestige[stand.Name] < PrestigeConfig.PrestigeDelay then
+                continue
+            end
+            
+            -- Récupération du profil
+            local success, profile = pcall(function()
+                return GetProfileDataRF:InvokeServer()
+            end)
+            
+            if not success or not profile then continue end
+            
+            local br = profile.PlotData 
+                and profile.PlotData.Stands 
+                and profile.PlotData.Stands[stand.Name]
+                and profile.PlotData.Stands[stand.Name].BrainrotData
+            
+            if br and br.Id then
+                local prestigeSuccess, err = pcall(function()
+                    PrestigeRE:FireServer(stand.Name, br.Id)
+                end)
+                
+                if prestigeSuccess then
+                    lastPrestige[stand.Name] = tick()
+                    levelCache[stand.Name] = 0
+                    print("🏆 PRESTIGE EFFECTUÉ:", stand.Name, "| Niveau 50 → Reset")
+                    LastPrestigeCheck = tick()
+                    task.wait(0.5)
+                    return
+                else
+                    warn("❌ Erreur prestige:", err)
+                end
+            end
+        elseif level and level > 50 then
+            -- ⚠️ ALERTE SI DÉPASSEMENT (ne devrait JAMAIS arriver)
+            warn("🚨 ALERTE: Niveau > 50 détecté sur", stand.Name, "| Niveau:", level)
+            levelCache[stand.Name] = level
+        end
+    end
+    
+    LastPrestigeCheck = currentTime
+end
 -- ===============================================
 -- 🔄 MAIN LOOP
 -- ===============================================
@@ -828,7 +913,13 @@ RunService.Heartbeat:Connect(function()
     autoPlaceEgg()
     autoCollectBoxes()
     autoBuyEgg()
-    prestigeTick()
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(2)  -- Check toutes les 2 secondes
+        autoPrestige()
+    end
 end)
 
 -- ===============================================
@@ -921,20 +1012,22 @@ MainTab:CreateToggle({
 })
 
 MainTab:CreateToggle({
-   Name = "🔥 Prestige Engine",
+   Name = "Auto Prestige",
    CurrentValue = false,
-   Flag = "PrestigeEngine",
+   Flag = "AutoPrestige",
    Callback = function(Value)
-      Config.AutoPrestige = Value
-
-      if Value then
-         print("🚀 Prestige Engine ACTIVÉ")
-      else
-         print("🛑 Prestige Engine DÉSACTIVÉ")
-      end
+      PrestigeConfig.AutoPrestige = Value
    end,
 })
 
+MainTab:CreateToggle({
+   Name = "Auto Swap Rank 4",
+   CurrentValue = false,
+   Flag = "AutoSwapRank4",
+   Callback = function(Value)
+      PrestigeConfig.AutoSwapRank4 = Value
+   end,
+})
 
 -- ===============================================
 -- 🎯 ONGLET RARETÉS
