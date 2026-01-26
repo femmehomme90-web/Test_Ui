@@ -1056,11 +1056,17 @@ MainTab:CreateToggle({
 })
 
 MainTab:CreateToggle({
-   Name = "Auto Prestige",
+   Name = "🔥 Prestige Engine",
    CurrentValue = false,
-   Flag = "AutoPrestige",
+   Flag = "PrestigeEngine",
    Callback = function(Value)
       Config.AutoPrestige = Value
+
+      if Value then
+         print("🚀 Prestige Engine ACTIVÉ")
+      else
+         print("🛑 Prestige Engine DÉSACTIVÉ")
+      end
    end,
 })
 
