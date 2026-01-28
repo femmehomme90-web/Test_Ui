@@ -80,8 +80,6 @@ local LastHatch = 0
 local LastPlaceEgg = 0
 local LastBuyEgg = 0
 local LastPickupWorst = 0
-
-
 local MAX_WAIT_SECONDS = 60 * 60 -- 30 minutes
 local buyEggLocked = false
 -- ===============================================
@@ -446,30 +444,28 @@ end
 
 local function decideAction(egg, cash, gainPerSec)
     
-    print("🔍 DEBUG - Rareté:", egg.rarity, "| Autorisée?", RarityConfig[egg.rarity])
-    print("💰 DEBUG - Prix œuf:", egg.price, "| Prix min config:", Config.MinEggPrice)
     
     -- Cas 1 : Rareté non autorisée → CHANGER
     if not RarityConfig[egg.rarity] then
-        print("❌ CHANGE → Rareté non autorisée")
+
         return "CHANGE"
     end
     
     -- Cas 2 : Prix pas assez élevé (strictement supérieur) → CHANGER
     if Config.MinEggPrice > 0 and egg.price <= Config.MinEggPrice then
-        print("❌ CHANGE → Prix trop bas ou égal (", egg.price, "<=", Config.MinEggPrice, ")")
+
         return "CHANGE"
     end
     
     -- Cas 3 : Cash suffisant → ACHETER
     if cash >= egg.price then
-        print("✅ BUY → Cash suffisant")
+       
         return "BUY"
     end
     
     -- Cas 4 : Pas de production → CHANGER
     if gainPerSec <= 0 then
-        print("❌ CHANGE → Pas de production")
+     
         return "CHANGE"
     end
     
@@ -479,11 +475,9 @@ local function decideAction(egg, cash, gainPerSec)
     local minutes = math.floor((waitTime % 3600) / 60)
     local seconds = math.floor(waitTime % 60)
     
-    print(string.format("⏳ Temps estimé : %dh %dm %ds", hours, minutes, seconds))
     
     -- Cas 6 : Temps d'attente trop long → CHANGER
     if waitTime > MAX_WAIT_SECONDS then
-        print("❌ CHANGE → Attente trop longue")
         return "CHANGE"
     end
     
@@ -491,6 +485,8 @@ local function decideAction(egg, cash, gainPerSec)
     print(string.format("⏰ WAIT → Attente de %dh %dm %ds", hours, minutes, seconds))
     return "WAIT", waitTime
 end
+
+
 
 local function autoBuyEgg()
     if not Config.AutoBuyEgg then return end
@@ -507,7 +503,6 @@ local function autoBuyEgg()
     
     -- Aucun œuf détecté
     if not egg then
-        print("❌ Aucun œuf détecté → changement")
         buyEggLocked = true
         changeEgg()
         task.wait(0.5)
