@@ -1,0 +1,58 @@
+═══════════════════════════════════════
+📦 OBJET: CoreObjects
+🏷️  NOM: CoreObjects
+📂 CLASSE: Folder
+═══════════════════════════════════════
+
+⚙️  PROPRIÉTÉS:
+───────────────────────────────────────
+  • Name = CoreObjects
+  • ClassName = Folder
+  • Parent = Workspace
+  • Archivable = true
+
+👶 ENFANTS (19):
+───────────────────────────────────────
+  [1] WalkConveyors (Folder)
+      ↳ Path: Workspace.CoreObjects.WalkConveyors
+  [2] UIPrompts (Folder)
+      ↳ Path: Workspace.CoreObjects.UIPrompts
+  [3] Eggs (Folder)
+      ↳ Path: Workspace.CoreObjects.Eggs
+  [4] PlayerBrainrots (Folder)
+      ↳ Path: Workspace.CoreObjects.PlayerBrainrots
+  [5] DialogNpcs (Folder)
+      ↳ Path: Workspace.CoreObjects.DialogNpcs
+  [6] Leaderboards (Folder)
+      ↳ Path: Workspace.CoreObjects.Leaderboards
+  [7] Plots (Folder)
+      ↳ Path: Workspace.CoreObjects.Plots
+  [8] GamepassParts (Folder)
+      ↳ Path: Workspace.CoreObjects.GamepassParts
+  [9] DevproductParts (Folder)
+      ↳ Path: Workspace.CoreObjects.DevproductParts
+  [10] BigUpdateBoard (Model)
+      ↳ Path: Workspace.CoreObjects.BigUpdateBoard
+  [11] SantteoSleigh (Folder)
+      ↳ Path: Workspace.CoreObjects.SantteoSleigh
+  [12] WeatherEventCountdown (Model)
+      ↳ Path: Workspace.CoreObjects.WeatherEventCountdown
+  [13] WeatherEventModels (Folder)
+      ↳ Path: Workspace.CoreObjects.WeatherEventModels
+  [14] FuseMachine (Folder)
+      ↳ Path: Workspace.CoreObjects.FuseMachine
+  [15] TeleportBack (Model)
+      ↳ Path: Workspace.CoreObjects.TeleportBack
+  [16] Merchant (Model)
+      ↳ Path: Workspace.CoreObjects.Merchant
+  [17] WeatherEventParticles (Folder)
+      ↳ Path: Workspace.CoreObjects.WeatherEventParticles
+  [18] SellTeleport (Part)
+      ↳ Path: Workspace.CoreObjects.SellTeleport
+  [19] IslandLocation (Part)
+      ↳ Path: Workspace.CoreObjects.IslandLocation
+
+═══════════════════════════════════════
+
+
+
