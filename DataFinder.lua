@@ -28,11 +28,15 @@ local Networker = ReplicatedStorage.Shared.Packages.Networker
 
 -- Liste des raretés recherchées (tu peux modifier cette liste)
 local RaretesRecherchees = {
-    "Mythical",
-    "Legendary",
-    "Epic"
-    -- Ajoute d'autres raretés si besoin
+    "Divine",
+    "GOD",
+    "Admin",
+    "Event",
+    "Limited",
+    "OG",
+    "Exclusive",
 }
+
 local function GetConvoyeurInfo()
     local EggFolder = workspace.CoreObjects.Eggs
 
