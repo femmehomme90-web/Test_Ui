@@ -11,8 +11,8 @@ local Networker = ReplicatedStorage.Shared.Packages.Networker
 
 local RaretesRecherchees = {
     --"GOD",
-    "Event",
-    "Divine",
+    --"Event",
+    --"Divine",
     "Admin",
     "Exclusive",
 }
