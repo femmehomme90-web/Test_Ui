@@ -8,6 +8,7 @@ local ClientUtils = require(ReplicatedStorage:WaitForChild("Client"):WaitForChil
 local rebirths = (ClientUtils.ProfileData and ClientUtils.ProfileData.leaderstats and ClientUtils.ProfileData.leaderstats.Rebirths) or 0
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Networker = ReplicatedStorage.Shared.Packages.Networker
+
 local RaretesRecherchees = {
     --"GOD",
     "Event",
@@ -15,6 +16,7 @@ local RaretesRecherchees = {
     "Admin",
     "Exclusive",
 }
+
 local function GetConvoyeurInfo()
     wait(0.2)
     local EggFolder = workspace.CoreObjects.Eggs
@@ -41,6 +43,7 @@ local function GetConvoyeurInfo()
     end
     return nil, nil
 end
+
 local function EstRareteRecherchee(rarete)
     for _, rareteRecherchee in ipairs(RaretesRecherchees) do
         if rarete == rareteRecherchee then
@@ -49,51 +52,71 @@ local function EstRareteRecherchee(rarete)
     end
     return false
 end
-local function TrouverRareteAvecRetry(brainrotName, maxTentatives)
-    maxTentatives = maxTentatives or 3 -- Par défaut 3 tentatives
+
+-- Nouvelle fonction pour retry complet (brainrotName ET rareté)
+local function TrouverOeufCompletAvecRetry(maxTentatives)
+    maxTentatives = maxTentatives or 5 -- Par défaut 5 tentatives
+    
     for tentative = 1, maxTentatives do
-        local rarityText, _ = GetConvoyeurInfo()
-        if rarityText then 
-            return rarityText
-        else
-            if tentative < maxTentatives then
-                wait(0.2) 
-            end
+        local rarityText, brainrotName = GetConvoyeurInfo()
+        
+        -- Si on a TOUT trouvé, on retourne
+        if rarityText and brainrotName then 
+            print("✅ Œuf trouvé (tentative " .. tentative .. "/" .. maxTentatives .. "):", brainrotName, "-", rarityText)
+            return rarityText, brainrotName
+        end
+        
+        -- Logs de debug pour savoir ce qui manque
+        if brainrotName and not rarityText then
+            warn("⚠️ Tentative " .. tentative .. "/" .. maxTentatives .. ": brainrotName trouvé mais pas de rareté")
+        elseif not brainrotName then
+            warn("⚠️ Tentative " .. tentative .. "/" .. maxTentatives .. ": aucun œuf détecté")
+        end
+        
+        -- Attendre avant le prochain essai (sauf à la dernière tentative)
+        if tentative < maxTentatives then
+            wait(0.3) 
         end
     end
-    warn("⚠️ Impossible de trouver la rareté après", maxTentatives, "tentatives")
-    return nil
+    
+    warn("❌ Impossible de trouver l'œuf complet après", maxTentatives, "tentatives")
+    return nil, nil
 end
+
 local function AutoBuyEgg()
     while true do
         wait(0.3) 
+        
+        -- Première tentative rapide
         local rarityText, brainrotName = GetConvoyeurInfo()
-        if brainrotName then
-            if not rarityText then
-                warn("no rarity found", brainrotName)
-                rarityText = TrouverRareteAvecRetry(brainrotName, 3)
-            end
-            if rarityText then   
-                if EstRareteRecherchee(rarityText) then
-                    print(brainrotName, rarityText)
-                    print(Bank)
-                    Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
-                    Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
-                    Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
-                    print(Bank)
-                    Networker["RF/RequestEggSpawn"]:InvokeServer()
-                    wait(0.2)
-                else               
-                    Networker["RF/RequestEggSpawn"]:InvokeServer()
-                end
-            else
-                warn("no rarity mais le texte rarity a été trouvé ????", brainrotName)
+        
+        -- Si on n'a pas trouvé l'œuf OU la rareté, on fait des retry
+        if not brainrotName or not rarityText then
+            warn("🔄 Retry nécessaire - brainrotName:", brainrotName, "| rareté:", rarityText)
+            rarityText, brainrotName = TrouverOeufCompletAvecRetry(5)
+        end
+        
+        -- Maintenant on vérifie si on a TOUT
+        if brainrotName and rarityText then
+            -- On a trouvé l'œuf ET sa rareté
+            if EstRareteRecherchee(rarityText) then
+                print("💎 ACHAT:", brainrotName, "-", rarityText, "| Cash:", Bank)
+                Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
+                Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
+                Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
+                print("✅ Achat terminé | Cash:", Bank)
+                Networker["RF/RequestEggSpawn"]:InvokeServer()
+                wait(0.2)
+            else     
+                print("⏭️ Rareté ignorée:", rarityText, "- Passage au suivant")          
                 Networker["RF/RequestEggSpawn"]:InvokeServer()
             end
         else
-            warn("meme pas de brainrot name ?? wtf")
+            -- Même après retry, on n'a pas réussi à trouver l'œuf
+            warn("❌ Échec total de détection - Skip vers le prochain œuf")
             Networker["RF/RequestEggSpawn"]:InvokeServer()
         end
     end
 end
+
 AutoBuyEgg()
