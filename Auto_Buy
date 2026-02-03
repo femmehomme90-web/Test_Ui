@@ -50,7 +50,7 @@ mainFrame.Size = UDim2.new(0, 300, 0, 450)
 mainFrame.Position = UDim2.new(0.5, -150, 0.5, -225)
 mainFrame.BackgroundColor3 = Color3.fromRGB(22, 33, 62)
 mainFrame.BorderSizePixel = 0
-mainFrame.Visible = false
+mainFrame.Visible = true
 mainFrame.Parent = screenGui
 
 -- Corner pour arrondir
@@ -73,7 +73,7 @@ title.Parent = mainFrame
 -- ScrollingFrame pour la liste
 local scrollFrame = Instance.new("ScrollingFrame")
 scrollFrame.Name = "ScrollFrame"
-scrollFrame.Size = UDim2.new(1, -20, 1, -90)
+scrollFrame.Size = UDim2.new(1, -20, 1, -60)
 scrollFrame.Position = UDim2.new(0, 10, 0, 50)
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel = 0
@@ -86,18 +86,6 @@ local listLayout = Instance.new("UIListLayout")
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Padding = UDim.new(0, 5)
 listLayout.Parent = scrollFrame
-
--- Footer
-local footer = Instance.new("TextLabel")
-footer.Name = "Footer"
-footer.Size = UDim2.new(1, 0, 0, 30)
-footer.Position = UDim2.new(0, 0, 1, -35)
-footer.BackgroundTransparency = 1
-footer.Text = "Appuyez sur INSERT pour fermer"
-footer.TextColor3 = Color3.fromRGB(136, 136, 136)
-footer.TextSize = 12
-footer.Font = Enum.Font.Gotham
-footer.Parent = mainFrame
 
 -- Fonction pour créer un bouton de rareté
 local function createRarityButton(rarity, index)
@@ -168,22 +156,9 @@ end
 -- Calculer la taille du contenu
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, (#rarities * 40))
 
--- Fonction pour toggle l'interface
-local function toggleInterface()
-    mainFrame.Visible = not mainFrame.Visible
-end
-
--- Gestion de la touche INSERT
-local UserInputService = game:GetService("UserInputService")
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.Insert and not gameProcessed then
-        toggleInterface()
-    end
-end)
-
 -- Fonction pour récupérer la rareté sélectionnée (utilisable dans d'autres scripts)
 getgenv().GetSelectedRarity = function()
     return selectedRarity
 end
 
-print("Rarity Selector chargé ! Appuyez sur INSERT pour ouvrir.")
+print("Rarity Selector chargé !")
