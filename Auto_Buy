@@ -22,18 +22,19 @@ local function GetConvoyeurInfo()
     local EggFolder = workspace.CoreObjects.Eggs
     for _, model in ipairs(EggFolder:GetChildren()) do
         if model:GetAttribute("CurrentEgg") then
-            for _, meshFolder in ipairs(model:GetChildren()) do
-                if meshFolder.Name:match("^Meshes/") then
-                    local billboard = meshFolder:FindFirstChild("BillboardAttachment")
-                    if billboard then
-                        local eggBillboard = billboard:FindFirstChild("EggBillboard")
-                        if eggBillboard then
-                            local EggFrame = eggBillboard:FindFirstChild("Frame")
-                            if EggFrame then 
-                                local Rarity = EggFrame:FindFirstChild("Rarity")
-                                if Rarity and Rarity:IsA("TextLabel") then
-                                    return Rarity.Text, model.Name
-                                end
+            -- Récupère le premier (et unique) enfant, quel que soit son nom
+            local meshPart = model:GetChildren()[1]
+            
+            if meshPart and meshPart:IsA("MeshPart") then
+                local billboard = meshPart:FindFirstChild("BillboardAttachment")
+                if billboard then
+                    local eggBillboard = billboard:FindFirstChild("EggBillboard")
+                    if eggBillboard then
+                        local EggFrame = eggBillboard:FindFirstChild("Frame")
+                        if EggFrame then 
+                            local Rarity = EggFrame:FindFirstChild("Rarity")
+                            if Rarity and Rarity:IsA("TextLabel") then
+                                return Rarity.Text, model.Name
                             end
                         end
                     end
