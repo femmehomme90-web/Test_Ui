@@ -57,6 +57,173 @@ local function GetStandsValide(MonPlot)
     return standsInfo
 end
 
+-- Auto FEED --
+
+local FOOD_PRIORITY = {"Pizza", "Burger", "Hotdog", "Ham", "Fries"} 
+local CHECK_INTERVAL = 360 -- toute les 5 minuscule
+
+local function GetFoodShopInfo()
+    local success, data = pcall(function ()
+        return Networker["RF/GetFoodShopData"]:InvokeServer()        
+    end)
+
+    if success and data then
+        print(data)
+        return data
+    end
+    return nil
+end
+
+local function BuyFood(foodName)
+
+    local success, result = pcall(function()
+        return Networker["RF/BuyFood"]:InvokeServer(foodName)
+    end)
+    if success then
+        print("Acheté", foodName)
+        return true
+
+    else warn("echecs", foodName)
+        return false
+    end
+end
+
+local function EquipeFood(foodName)
+    local backpack = LocalPlayer.backpack
+    local foodItem = backpack:FindFirstChild(foodName)
+
+    if foodItem then
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChild("Humanoid") then
+            character.Humanoid:EquipTool(foodItem)
+            return true
+        end
+
+    end
+    return false
+end
+
+local function Feeder()
+    task.wait(0.5) 
+
+    local success, result = pcall(function()
+        return Networker["RF/Feed"]:InvokeServer()
+    end)
+    
+    if success then
+        print("Pêcheur nourri avec succès!")
+        return true
+    else
+        warn("Échec du nourrissage")
+        return false
+    end
+end
+
+local function UnequipCurrentTool()
+    local character = LocalPlayer.Character
+    if character then
+        local currentTool = character:FindFirstChildOfClass("Tool")
+        if currentTool then
+            currentTool.Parent = LocalPlayer.Backpack
+        end
+    end
+end
+
+local function BuyAndFeedAutomatically()
+    local shopData = GetFoodShopInfo()
+    
+    if not shopData or not shopData.Stock then
+        warn("Impossible d'obtenir les données du shop")
+        return false
+    end
+    
+    print("Stock disponible:", shopData.Stock)
+    
+    -- Chercher la meilleure nourriture disponible selon la priorité
+    local foodToBuy = nil
+    for _, foodName in ipairs(FOOD_PRIORITY) do
+        if shopData.Stock[foodName] and shopData.Stock[foodName] > 0 then
+            foodToBuy = foodName
+            break
+        end
+    end
+    
+    if not foodToBuy then
+        warn("Aucune nourriture disponible en stock!")
+        return false
+    end
+    
+    print("Tentative d'achat de:", foodToBuy)
+    
+    
+    if BuyFood(foodToBuy) then
+        task.wait(0.3) 
+        
+      
+        UnequipCurrentTool()
+        task.wait(0.2)
+        
+      
+        if EquipeFood(foodToBuy) then
+            print("Nourriture équipée:", foodToBuy)
+            
+            if Feeder() then
+                task.wait(1)
+                UnequipCurrentTool()
+                return true
+            end
+        else
+            warn("Impossible d'équiper:", foodToBuy)
+        end
+    end
+    
+    return false
+end
+
+print("🍕 Script de nourriture automatique démarré!")
+while true do
+    local success = BuyAndFeedAutomatically()
+    
+    if success then
+        print("✅ Cycle terminé avec succès")
+    else
+        warn("❌ Échec du cycle")
+    end
+    
+    task.wait(CHECK_INTERVAL)
+end
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local function GetConvoyeurInfo()
     local EggFolder = workspace.CoreObjects.Eggs
 

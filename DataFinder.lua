@@ -8,41 +8,15 @@ local ClientUtils = require(ReplicatedStorage:WaitForChild("Client"):WaitForChil
 local rebirths = (ClientUtils.ProfileData and ClientUtils.ProfileData.leaderstats and ClientUtils.ProfileData.leaderstats.Rebirths) or 0
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Networker = ReplicatedStorage.Shared.Packages.Networker
-
 local RaretesRecherchees = {
-    "Divine",
     "GOD",
-    "Admin",
     "Event",
-    "Limited",
-    "OG",
-    "Exclusive",
-}
-
-
-
-
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Networker = ReplicatedStorage.Shared.Packages.Networker
-
--- Liste des raretés recherchées (tu peux modifier cette liste)
-local RaretesRecherchees = {
     "Divine",
-    "GOD",
-    "Admin",
-    "Event",
-    "Limited",
-    "OG",
-    "Exclusive",
 }
-
 local function GetConvoyeurInfo()
     local EggFolder = workspace.CoreObjects.Eggs
-
     for _, model in ipairs(EggFolder:GetChildren()) do
         if model:GetAttribute("CurrentEgg") then
-            
             for _, meshFolder in ipairs(model:GetChildren()) do
                 if meshFolder.Name:match("^Meshes/") then
                     local billboard = meshFolder:FindFirstChild("BillboardAttachment")
@@ -62,7 +36,6 @@ local function GetConvoyeurInfo()
             end
         end
     end
-    
     return nil, nil
 end
 local function EstRareteRecherchee(rarete)
@@ -81,17 +54,16 @@ local function TrouverRareteAvecRetry(brainrotName, maxTentatives)
             return rarityText
         else
             if tentative < maxTentatives then
-                wait(0.2) -- Attendre 0.2s avant de réessayer
+                wait(0.2) 
             end
         end
     end
-    
     warn("⚠️ Impossible de trouver la rareté après", maxTentatives, "tentatives")
     return nil
 end
 local function AutoBuyEgg()
     while true do
-        wait(0.1) -- Attendre 0.1 seconde entre chaque vérification
+        wait(0.1) 
         local rarityText, brainrotName = GetConvoyeurInfo()
         if brainrotName then
             if not rarityText then
@@ -99,9 +71,10 @@ local function AutoBuyEgg()
             end
             if rarityText then   
                 if EstRareteRecherchee(rarityText) then
+                    print(brainrotName, rarityText)
                     Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
                     Networker["RF/RequestEggSpawn"]:InvokeServer()
-                    wait(0.2) -- Attendre 1 seconde après l'achat
+                    wait(0.2)
                 else               
                     Networker["RF/RequestEggSpawn"]:InvokeServer()
                 end

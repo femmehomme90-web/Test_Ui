@@ -1,0 +1,189 @@
+-- Rarity Selector GUI pour Roblox
+-- Appuyez sur INSERT pour ouvrir/fermer
+
+local rarities = {
+    "GOD", "Divine", "Event", "Exclusive", "Admin", 
+    "Limited", "OG", "Exotic", "secret", "Mythic", 
+    "Legendary", "Epic", "Rare", "Uncommon", "Common"
+}
+
+local rarityColors = {
+    GOD = Color3.fromRGB(255, 0, 0),
+    Divine = Color3.fromRGB(255, 170, 0),
+    Event = Color3.fromRGB(255, 107, 157),
+    Exclusive = Color3.fromRGB(194, 24, 91),
+    Admin = Color3.fromRGB(0, 255, 0),
+    Limited = Color3.fromRGB(76, 175, 80),
+    OG = Color3.fromRGB(156, 39, 176),
+    Exotic = Color3.fromRGB(233, 30, 99),
+    secret = Color3.fromRGB(103, 58, 183),
+    Mythic = Color3.fromRGB(255, 87, 34),
+    Legendary = Color3.fromRGB(255, 152, 0),
+    Epic = Color3.fromRGB(156, 39, 176),
+    Rare = Color3.fromRGB(33, 150, 243),
+    Uncommon = Color3.fromRGB(76, 175, 80),
+    Common = Color3.fromRGB(158, 158, 158)
+}
+
+local selectedRarity = "Common"
+
+-- Créer le ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "RaritySelector"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Protection contre la suppression
+if gethui then
+    screenGui.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(screenGui)
+    screenGui.Parent = game.CoreGui
+else
+    screenGui.Parent = game.CoreGui
+end
+
+-- Frame principale
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 300, 0, 450)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -225)
+mainFrame.BackgroundColor3 = Color3.fromRGB(22, 33, 62)
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+
+-- Corner pour arrondir
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = mainFrame
+
+-- Titre
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "🎯 Sélecteur de Rareté"
+title.TextColor3 = Color3.fromRGB(233, 69, 96)
+title.TextSize = 20
+title.Font = Enum.Font.GothamBold
+title.Parent = mainFrame
+
+-- ScrollingFrame pour la liste
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Name = "ScrollFrame"
+scrollFrame.Size = UDim2.new(1, -20, 1, -90)
+scrollFrame.Position = UDim2.new(0, 10, 0, 50)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel = 0
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(233, 69, 96)
+scrollFrame.Parent = mainFrame
+
+-- UIListLayout pour organiser les boutons
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 5)
+listLayout.Parent = scrollFrame
+
+-- Footer
+local footer = Instance.new("TextLabel")
+footer.Name = "Footer"
+footer.Size = UDim2.new(1, 0, 0, 30)
+footer.Position = UDim2.new(0, 0, 1, -35)
+footer.BackgroundTransparency = 1
+footer.Text = "Appuyez sur INSERT pour fermer"
+footer.TextColor3 = Color3.fromRGB(136, 136, 136)
+footer.TextSize = 12
+footer.Font = Enum.Font.Gotham
+footer.Parent = mainFrame
+
+-- Fonction pour créer un bouton de rareté
+local function createRarityButton(rarity, index)
+    local button = Instance.new("TextButton")
+    button.Name = rarity
+    button.Size = UDim2.new(1, -10, 0, 35)
+    button.BackgroundColor3 = Color3.fromRGB(15, 52, 96)
+    button.BorderSizePixel = 0
+    button.Text = rarity
+    button.TextColor3 = rarityColors[rarity] or Color3.fromRGB(255, 255, 255)
+    button.TextSize = 16
+    button.Font = Enum.Font.GothamSemibold
+    button.LayoutOrder = index
+    button.Parent = scrollFrame
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 8)
+    buttonCorner.Parent = button
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(15, 52, 96)
+    stroke.Thickness = 2
+    stroke.Transparency = 1
+    stroke.Parent = button
+    
+    -- Effet hover
+    button.MouseEnter:Connect(function()
+        button.BackgroundColor3 = Color3.fromRGB(26, 77, 122)
+    end)
+    
+    button.MouseLeave:Connect(function()
+        if selectedRarity ~= rarity then
+            button.BackgroundColor3 = Color3.fromRGB(15, 52, 96)
+        end
+    end)
+    
+    -- Sélection
+    button.MouseButton1Click:Connect(function()
+        selectedRarity = rarity
+        
+        -- Mettre à jour tous les boutons
+        for _, child in pairs(scrollFrame:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.BackgroundColor3 = Color3.fromRGB(15, 52, 96)
+                local childStroke = child:FindFirstChildOfClass("UIStroke")
+                if childStroke then
+                    childStroke.Transparency = 1
+                end
+            end
+        end
+        
+        -- Mettre en évidence le bouton sélectionné
+        button.BackgroundColor3 = Color3.fromRGB(45, 74, 111)
+        stroke.Color = Color3.fromRGB(233, 69, 96)
+        stroke.Transparency = 0
+        
+        print("Rareté sélectionnée:", rarity)
+    end)
+    
+    return button
+end
+
+-- Créer tous les boutons
+for i, rarity in ipairs(rarities) do
+    createRarityButton(rarity, i)
+end
+
+-- Calculer la taille du contenu
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, (#rarities * 40))
+
+-- Fonction pour toggle l'interface
+local function toggleInterface()
+    mainFrame.Visible = not mainFrame.Visible
+end
+
+-- Gestion de la touche INSERT
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.Insert and not gameProcessed then
+        toggleInterface()
+    end
+end)
+
+-- Fonction pour récupérer la rareté sélectionnée (utilisable dans d'autres scripts)
+getgenv().GetSelectedRarity = function()
+    return selectedRarity
+end
+
+print("Rarity Selector chargé ! Appuyez sur INSERT pour ouvrir.")
