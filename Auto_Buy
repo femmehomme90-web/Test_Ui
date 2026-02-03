@@ -10,11 +10,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Networker = ReplicatedStorage.Shared.Packages.Networker
 
 local RaretesRecherchees = {
-    --"GOD",
+    "GOD",
     "Event",
-    --"Divine",
-    --"Admin",
-    --"Exclusive",
+    "Divine",
+    "Admin",
+    "Exclusive",
 }
 
 local function GetConvoyeurInfo()
