@@ -68,11 +68,9 @@ local function TrouverOeufCompletAvecRetry(maxTentatives)
         end
         
         -- Logs de debug pour savoir ce qui manque
-        if brainrotName and not rarityText then
-            warn("⚠️ Tentative " .. tentative .. "/" .. maxTentatives .. ": brainrotName trouvé mais pas de rareté")
-        elseif not brainrotName then
-            warn("⚠️ Tentative " .. tentative .. "/" .. maxTentatives .. ": aucun œuf détecté")
-        end
+        --if brainrotName and not rarityText then
+        --elseif not brainrotName then
+       --end
         
         -- Attendre avant le prochain essai (sauf à la dernière tentative)
         if tentative < maxTentatives then
@@ -109,7 +107,6 @@ local function AutoBuyEgg()
                 Networker["RF/RequestEggSpawn"]:InvokeServer()
                 wait(0.2)
             else     
-                print("⏭️ Rareté ignorée:", rarityText, "- Passage au suivant")          
                 Networker["RF/RequestEggSpawn"]:InvokeServer()
             end
         else
