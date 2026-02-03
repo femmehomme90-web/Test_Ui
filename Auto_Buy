@@ -1,6 +1,17 @@
--- Rarity Selector GUI pour Roblox
--- Appuyez sur INSERT pour ouvrir/fermer
+-- Rarity Selector GUI avec Auto Buy Logic
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local joueur = Players.LocalPlayer
 
+-- Variables de base
+local MonNomDePlot = joueur:GetAttribute("InPlot")
+local MonPlot = workspace.CoreObjects.Plots:FindFirstChild(MonNomDePlot)
+local Bank = joueur.leaderstats.Cash:GetAttribute("ExactValue")
+local ClientUtils = require(ReplicatedStorage:WaitForChild("Client"):WaitForChild("Modules"):WaitForChild("ClientUtils"))
+local rebirths = (ClientUtils.ProfileData and ClientUtils.ProfileData.leaderstats and ClientUtils.ProfileData.leaderstats.Rebirths) or 0
+local Networker = ReplicatedStorage.Shared.Packages.Networker
+
+-- Liste de toutes les raretés
 local rarities = {
     "GOD", "Divine", "Event", "Exclusive", "Admin", 
     "Limited", "OG", "Exotic", "secret", "Mythic", 
@@ -25,7 +36,8 @@ local rarityColors = {
     Common = Color3.fromRGB(158, 158, 158)
 }
 
-local selectedRarity = "Common"
+-- Raretés recherchées (modifiable via l'interface)
+local RaretesRecherchees = {}
 
 -- Créer le ScreenGui
 local screenGui = Instance.new("ScreenGui")
@@ -87,6 +99,39 @@ listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Padding = UDim.new(0, 5)
 listLayout.Parent = scrollFrame
 
+-- Fonction pour vérifier si une rareté est sélectionnée
+local function EstRareteSelectionnee(rarete)
+    for _, rareteRecherchee in ipairs(RaretesRecherchees) do
+        if rarete == rareteRecherchee then
+            return true
+        end
+    end
+    return false
+end
+
+-- Fonction pour ajouter/retirer une rareté
+local function ToggleRarete(rarete, button, stroke)
+    if EstRareteSelectionnee(rarete) then
+        -- Retirer la rareté
+        for i, r in ipairs(RaretesRecherchees) do
+            if r == rarete then
+                table.remove(RaretesRecherchees, i)
+                break
+            end
+        end
+        button.BackgroundColor3 = Color3.fromRGB(15, 52, 96)
+        stroke.Transparency = 1
+    else
+        -- Ajouter la rareté
+        table.insert(RaretesRecherchees, rarete)
+        button.BackgroundColor3 = Color3.fromRGB(45, 74, 111)
+        stroke.Color = Color3.fromRGB(233, 69, 96)
+        stroke.Transparency = 0
+    end
+    
+    print("Raretés recherchées:", table.concat(RaretesRecherchees, ", "))
+end
+
 -- Fonction pour créer un bouton de rareté
 local function createRarityButton(rarity, index)
     local button = Instance.new("TextButton")
@@ -113,36 +158,20 @@ local function createRarityButton(rarity, index)
     
     -- Effet hover
     button.MouseEnter:Connect(function()
-        button.BackgroundColor3 = Color3.fromRGB(26, 77, 122)
+        if not EstRareteSelectionnee(rarity) then
+            button.BackgroundColor3 = Color3.fromRGB(26, 77, 122)
+        end
     end)
     
     button.MouseLeave:Connect(function()
-        if selectedRarity ~= rarity then
+        if not EstRareteSelectionnee(rarity) then
             button.BackgroundColor3 = Color3.fromRGB(15, 52, 96)
         end
     end)
     
-    -- Sélection
+    -- Toggle sélection
     button.MouseButton1Click:Connect(function()
-        selectedRarity = rarity
-        
-        -- Mettre à jour tous les boutons
-        for _, child in pairs(scrollFrame:GetChildren()) do
-            if child:IsA("TextButton") then
-                child.BackgroundColor3 = Color3.fromRGB(15, 52, 96)
-                local childStroke = child:FindFirstChildOfClass("UIStroke")
-                if childStroke then
-                    childStroke.Transparency = 1
-                end
-            end
-        end
-        
-        -- Mettre en évidence le bouton sélectionné
-        button.BackgroundColor3 = Color3.fromRGB(45, 74, 111)
-        stroke.Color = Color3.fromRGB(233, 69, 96)
-        stroke.Transparency = 0
-        
-        print("Rareté sélectionnée:", rarity)
+        ToggleRarete(rarity, button, stroke)
     end)
     
     return button
@@ -156,9 +185,95 @@ end
 -- Calculer la taille du contenu
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, (#rarities * 40))
 
--- Fonction pour récupérer la rareté sélectionnée (utilisable dans d'autres scripts)
-getgenv().GetSelectedRarity = function()
-    return selectedRarity
+-- Fonction pour récupérer les raretés sélectionnées
+getgenv().GetSelectedRarities = function()
+    return RaretesRecherchees
 end
 
-print("Rarity Selector chargé !")
+print("Rarity Selector chargé ! Sélectionnez vos raretés.")
+
+-- ========== LOGIQUE AUTO BUY ==========
+
+local function GetConvoyeurInfo()
+    local EggFolder = workspace.CoreObjects.Eggs
+    for _, model in ipairs(EggFolder:GetChildren()) do
+        if model:GetAttribute("CurrentEgg") then
+            for _, meshFolder in ipairs(model:GetChildren()) do
+                if meshFolder.Name:match("^Meshes/") then
+                    local billboard = meshFolder:FindFirstChild("BillboardAttachment")
+                    if billboard then
+                        local eggBillboard = billboard:FindFirstChild("EggBillboard")
+                        if eggBillboard then
+                            local EggFrame = eggBillboard:FindFirstChild("Frame")
+                            if EggFrame then 
+                                local Rarity = EggFrame:FindFirstChild("Rarity")
+                                if Rarity and Rarity:IsA("TextLabel") then
+                                    return Rarity.Text, model.Name
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return nil, nil
+end
+
+local function EstRareteRecherchee(rarete)
+    for _, rareteRecherchee in ipairs(RaretesRecherchees) do
+        if rarete == rareteRecherchee then
+            return true
+        end
+    end
+    return false
+end
+
+local function TrouverRareteAvecRetry(brainrotName, maxTentatives)
+    maxTentatives = maxTentatives or 3
+    for tentative = 1, maxTentatives do
+        local rarityText, _ = GetConvoyeurInfo()
+        if rarityText then 
+            return rarityText
+        else
+            if tentative < maxTentatives then
+                wait(0.2) 
+            end
+        end
+    end
+    warn("⚠️ Impossible de trouver la rareté après", maxTentatives, "tentatives")
+    return nil
+end
+
+local function AutoBuyEgg()
+    while true do
+        wait(0.1) 
+        local rarityText, brainrotName = GetConvoyeurInfo()
+        if brainrotName then
+            if not rarityText then
+                rarityText = TrouverRareteAvecRetry(brainrotName, 3)
+            end
+            if rarityText then   
+                if EstRareteRecherchee(rarityText) then
+                    print(brainrotName, rarityText)
+                    print(Bank)
+                    Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
+                    Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
+                    Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
+                    print(Bank)
+                    Networker["RF/RequestEggSpawn"]:InvokeServer()
+                    wait(0.2)
+                else               
+                    Networker["RF/RequestEggSpawn"]:InvokeServer()
+                end
+            else
+                Networker["RF/RequestEggSpawn"]:InvokeServer()
+            end
+        else
+            Networker["RF/RequestEggSpawn"]:InvokeServer()
+        end
+    end
+end
+
+-- Lancer l'auto buy
+AutoBuyEgg()
