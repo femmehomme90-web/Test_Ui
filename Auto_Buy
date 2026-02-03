@@ -11,10 +11,10 @@ local Networker = ReplicatedStorage.Shared.Packages.Networker
 
 local RaretesRecherchees = {
     --"GOD",
-    --"Event",
+    "Event",
     --"Divine",
-    "Admin",
-    "Exclusive",
+    --"Admin",
+    --"Exclusive",
 }
 
 local function GetConvoyeurInfo()
