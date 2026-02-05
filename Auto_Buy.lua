@@ -1,7 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local joueur = Players.LocalPlayer
-local MonNomDePlot = joueur:GetAttribute("InPlot") -- recupérer le plot du joueur
+local MonNomDePlot = joueur:GetAttribute("InPlot") -- récupérer le plot du joueur
 local MonPlot = workspace.CoreObjects.Plots:FindFirstChild(MonNomDePlot) --transformation en format utilisable
 local Bank = joueur.leaderstats.Cash:GetAttribute("ExactValue") --récupérer le cash du joueur et c'est un forma chiffres   
 local ClientUtils = require(ReplicatedStorage:WaitForChild("Client"):WaitForChild("Modules"):WaitForChild("ClientUtils")) --avec ca on récupere pleins de choses importantes 
@@ -15,14 +15,14 @@ local RaretesRecherchees = {
     --"Admin",
     --"Exclusive",
 }
-local function GetConvoyeurInfo()
+
+local function GetTousLesOeufs()
     wait(0.1)
     local EggFolder = workspace.CoreObjects.Eggs
+    local oeufs = {}
     for _, model in ipairs(EggFolder:GetChildren()) do
         if model:GetAttribute("CurrentEgg") then
-
             local meshPart = model:GetChildren()[1]
-            
             if meshPart and meshPart:IsA("MeshPart") then
                 local billboard = meshPart:FindFirstChild("BillboardAttachment")
                 if billboard then
@@ -32,7 +32,10 @@ local function GetConvoyeurInfo()
                         if EggFrame then 
                             local Rarity = EggFrame:FindFirstChild("Rarity")
                             if Rarity and Rarity:IsA("TextLabel") then
-                                return Rarity.Text, model.Name
+                                table.insert(oeufs, {
+                                    rarete = Rarity.Text,
+                                    nom = model.Name
+                                })
                             end
                         end
                     end
@@ -40,9 +43,9 @@ local function GetConvoyeurInfo()
             end
         end
     end
-    return nil, nil
+    
+    return oeufs
 end
-
 local function EstRareteRecherchee(rarete)
     for _, rareteRecherchee in ipairs(RaretesRecherchees) do
         if rarete == rareteRecherchee then
@@ -51,45 +54,56 @@ local function EstRareteRecherchee(rarete)
     end
     return false
 end
-
-local function TrouverOeufCompletAvecRetry(maxTentatives)
-    maxTentatives = maxTentatives or 5 -- Par défaut 5 tentatives
-    
+local function TrouverOeufsCompletsAvecRetry(maxTentatives)
+    maxTentatives = maxTentatives or 5
     for tentative = 1, maxTentatives do
-        local rarityText, brainrotName = GetConvoyeurInfo()
-
-        if rarityText and brainrotName then 
-            print("✅ Œuf trouvé (tentative " .. tentative .. "/" .. maxTentatives .. "):", brainrotName, "-", rarityText)
-            return rarityText, brainrotName
+        local oeufs = GetTousLesOeufs()
+        if #oeufs > 0 then 
+            print("✅ Œuf(s) trouvé(s) (tentative " .. tentative .. "/" .. maxTentatives .. "):")
+            for _, oeuf in ipairs(oeufs) do
+                print("  -", oeuf.nom, "-", oeuf.rarete)
+            end
+            return oeufs
         end
         if tentative < maxTentatives then
             wait(0.1)
         end
     end
-    return nil, nil
+    
+    return {}
 end
-
 local function AutoBuyEgg()
     while true do
         wait(0.1) 
-        local rarityText, brainrotName = GetConvoyeurInfo()
-        if not brainrotName or not rarityText then
-            rarityText, brainrotName = TrouverOeufCompletAvecRetry(5)
+        local oeufs = GetTousLesOeufs()
+        if #oeufs == 0 then
+            oeufs = TrouverOeufsCompletsAvecRetry(5)
         end
-
-        if brainrotName and rarityText then
-            if EstRareteRecherchee(rarityText) then
+        if #oeufs > 0 then
+            local oeufsRaresATrouves = {}
+            -- Filtrer les œufs avec raretés recherchées
+            for _, oeuf in ipairs(oeufs) do
+                if EstRareteRecherchee(oeuf.rarete) then
+                    table.insert(oeufsRaresATrouves, oeuf)
+                end
+            end
+            -- Si on a trouvé des œufs rares
+            if #oeufsRaresATrouves > 0 then
                 print("")
-                print("💎 ACHAT:", brainrotName, "-", rarityText, "| Cash:", Bank)
+                print("💎 ACHAT DE", #oeufsRaresATrouves, "ŒUF(S) RARE(S) | Cash:", Bank)
+                for _, oeuf in ipairs(oeufsRaresATrouves) do
+                    print("  - Achat:", oeuf.nom, "-", oeuf.rarete)
+                    Networker["RF/BuyEgg"]:InvokeServer(oeuf.nom, 1)
+                    Networker["RF/BuyEgg"]:InvokeServer(oeuf.nom, 1)
+                end
                 print("")
-                Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
-                Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
-                Networker["RF/BuyEgg"]:InvokeServer(brainrotName, 1)
                 Networker["RF/RequestEggSpawn"]:InvokeServer()
-            else     
+            else
+                -- Aucun œuf rare trouvé
                 Networker["RF/RequestEggSpawn"]:InvokeServer()
             end
         else
+            -- Aucun œuf trouvé du tout
             Networker["RF/RequestEggSpawn"]:InvokeServer()
         end
     end
