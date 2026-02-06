@@ -8,7 +8,25 @@ local ClientUtils = require(ReplicatedStorage:WaitForChild("Client"):WaitForChil
 local rebirths = (ClientUtils.ProfileData and ClientUtils.ProfileData.leaderstats and ClientUtils.ProfileData.leaderstats.Rebirths) or 0
 local Networker = ReplicatedStorage.Shared.Packages.Networker
 
--- Configuration des raretés
+-- Configuration des raretés (ORDRE IMPORTANT)
+local RarityOrder = {
+    "Divine",
+    "GOD",
+    "Admin",
+    "Event",
+    "Limited",
+    "OG",
+    "Exclusive",
+    "Exotic",
+    "secret",
+    "Mythic",
+    "Legendary",
+    "Epic",
+    "Rare",
+    "Uncommon",
+    "Common",
+}
+
 local RarityConfig = {
     Divine = true,
     GOD = true,
@@ -110,10 +128,10 @@ local function CreerInterface()
     ToggleButton.Size = UDim2.new(0, 380, 0, 45)
     ToggleButton.Position = UDim2.new(0, 20, 0, 65)
     ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    ToggleButton.Text = "▶  DÉMARRER LE SCRIPT"
+    ToggleButton.Text = "DEMARRER LE SCRIPT"
     ToggleButton.TextColor3 = Color3.fromRGB(100, 220, 100)
     ToggleButton.TextSize = 16
-    ToggleButton.Font = Enum.Font.GothamBold
+    ToggleButton.Font = Enum.Font.Gotham
     ToggleButton.Parent = MainFrame
     
     local ToggleCorner = Instance.new("UICorner")
@@ -124,6 +142,18 @@ local function CreerInterface()
     ToggleStroke.Color = Color3.fromRGB(100, 220, 100)
     ToggleStroke.Thickness = 2
     ToggleStroke.Parent = ToggleButton
+    
+    -- Icône pour le bouton
+    local ToggleIcon = Instance.new("TextLabel")
+    ToggleIcon.Name = "Icon"
+    ToggleIcon.Size = UDim2.new(0, 30, 1, 0)
+    ToggleIcon.Position = UDim2.new(0, 10, 0, 0)
+    ToggleIcon.BackgroundTransparency = 1
+    ToggleIcon.Text = "▶"
+    ToggleIcon.TextColor3 = Color3.fromRGB(100, 220, 100)
+    ToggleIcon.TextSize = 18
+    ToggleIcon.Font = Enum.Font.Gotham
+    ToggleIcon.Parent = ToggleButton
     
     -- Label "Sélectionner les raretés"
     local RarityLabel = Instance.new("TextLabel")
@@ -164,16 +194,19 @@ local function CreerInterface()
     UIPadding.PaddingBottom = UDim.new(0, 10)
     UIPadding.Parent = ScrollFrame
     
-    -- Création des boutons de rareté
+    -- Création des boutons de rareté DANS L'ORDRE
     local yOffset = 0
     local buttons = {}
     
-    for rarity, enabled in pairs(RarityConfig) do
+    for index, rarity in ipairs(RarityOrder) do
+        local enabled = RarityConfig[rarity]
+        
         local RarityFrame = Instance.new("Frame")
         RarityFrame.Name = rarity
         RarityFrame.Size = UDim2.new(1, -20, 0, 40)
         RarityFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
         RarityFrame.BorderSizePixel = 0
+        RarityFrame.LayoutOrder = index
         RarityFrame.Parent = ScrollFrame
         
         local RarityCorner = Instance.new("UICorner")
@@ -277,10 +310,10 @@ local function CreerInterface()
     CloseButton.Size = UDim2.new(0, 380, 0, 40)
     CloseButton.Position = UDim2.new(0, 20, 0, 445)
     CloseButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    CloseButton.Text = "✕  FERMER"
+    CloseButton.Text = "FERMER"
     CloseButton.TextColor3 = Color3.fromRGB(255, 100, 100)
     CloseButton.TextSize = 14
-    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.Font = Enum.Font.Gotham
     CloseButton.Parent = MainFrame
     
     local CloseCorner = Instance.new("UICorner")
@@ -291,6 +324,17 @@ local function CreerInterface()
     CloseStroke.Color = Color3.fromRGB(80, 80, 90)
     CloseStroke.Thickness = 1
     CloseStroke.Parent = CloseButton
+    
+    local CloseIcon = Instance.new("TextLabel")
+    CloseIcon.Name = "CloseIcon"
+    CloseIcon.Size = UDim2.new(0, 30, 1, 0)
+    CloseIcon.Position = UDim2.new(0, 10, 0, 0)
+    CloseIcon.BackgroundTransparency = 1
+    CloseIcon.Text = "✕"
+    CloseIcon.TextColor3 = Color3.fromRGB(255, 100, 100)
+    CloseIcon.TextSize = 16
+    CloseIcon.Font = Enum.Font.Gotham
+    CloseIcon.Parent = CloseButton
     
     -- Rendre draggable
     local dragging = false
@@ -326,10 +370,10 @@ local function CreerInterface()
         end
     end)
     
-    return ScreenGui, ToggleButton, ToggleStroke, buttons, CloseButton
+    return ScreenGui, ToggleButton, ToggleIcon, ToggleStroke, buttons, CloseButton
 end
 
-local GUI, ToggleBtn, ToggleStroke, RarityButtons, CloseBtn = CreerInterface()
+local GUI, ToggleBtn, ToggleIcon, ToggleStroke, RarityButtons, CloseBtn = CreerInterface()
 
 -- Fermer l'interface
 CloseBtn.MouseButton1Click:Connect(function()
@@ -342,14 +386,16 @@ ToggleBtn.MouseButton1Click:Connect(function()
     ScriptActif = not ScriptActif
     if ScriptActif then
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 60, 50)
-        ToggleBtn.Text = "⏸  SCRIPT EN COURS..."
+        ToggleBtn.Text = "SCRIPT EN COURS..."
         ToggleBtn.TextColor3 = Color3.fromRGB(100, 220, 100)
         ToggleStroke.Color = Color3.fromRGB(100, 220, 100)
+        ToggleIcon.Text = "⏸"
     else
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-        ToggleBtn.Text = "▶  DÉMARRER LE SCRIPT"
+        ToggleBtn.Text = "DEMARRER LE SCRIPT"
         ToggleBtn.TextColor3 = Color3.fromRGB(100, 220, 100)
         ToggleStroke.Color = Color3.fromRGB(100, 220, 100)
+        ToggleIcon.Text = "▶"
     end
 end)
 
@@ -436,9 +482,7 @@ local function AutoBuyEgg()
                 end
             end
             
-            if #oeufsRaresATrouves > 0 then
-                print("")
-                print("💎 ACHAT DE", #oeufsRaresATrouves, "ŒUF(S) RARE(S) | Cash:", Bank)
+            if #oeufsRaresATrouves > 0 then              
                 
                 for _, oeuf in ipairs(oeufsRaresATrouves) do
                     print("  - Achat:", oeuf.nom, "-", oeuf.rarete)
