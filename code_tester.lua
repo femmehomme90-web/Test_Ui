@@ -68,13 +68,10 @@ end
 -- Fonction pour convertir le texte du prix en nombre
 local function ConvertirPrixEnNombre(prixTexte)
     if not prixTexte or prixTexte == "N/A" then 
-        print("⚠️ Prix invalide:", prixTexte)
         return 0 
     end
     
-    -- Afficher le prix original pour debug
-    print("🔍 Prix original:", prixTexte)
-    
+    -- Afficher le prix original pour debug    
     -- Enlever le symbole $ et les espaces
     prixTexte = prixTexte:gsub("%$", ""):gsub("%s+", "")
     
@@ -84,7 +81,6 @@ local function ConvertirPrixEnNombre(prixTexte)
         local prixSansVirgules = prixTexte:gsub(",", "")
         local nombre = tonumber(prixSansVirgules)
         if nombre then
-            print("✅ Converti (format virgule):", prixTexte, "→", nombre)
             return nombre
         end
     end
@@ -113,7 +109,6 @@ local function ConvertirPrixEnNombre(prixTexte)
         resultat = nombre * suffixes[suffixe]
     end
     
-    print("✅ Converti (format suffixe):", prixTexte, "→", resultat)
     return resultat
 end
 
@@ -269,7 +264,6 @@ local function CreerInterface()
             local inputNumber = tonumber(priceInput.Text)
             if inputNumber then
                 PrixMinimum = inputNumber * selectedSuffix
-                print("💰 Prix minimum défini:", inputNumber, "x", suffix.text, "=", PrixMinimum)
             end
         end)
     end
@@ -600,13 +594,10 @@ local function AutoBuyEgg()
             
             for _, oeuf in ipairs(oeufs) do
                 if EstRareteRecherchee(oeuf.rarete) then
-                    print("🔍 Vérification:", oeuf.nom, "-", oeuf.rarete, "- Prix texte:", oeuf.prixTexte, "- Prix nombre:", oeuf.prixNombre, "- Minimum:", PrixMinimum)
                     
                     if EstPrixSuffisant(oeuf.prixNombre) then
                         table.insert(oeufsRaresATrouves, oeuf)
-                        print("✅ Œuf accepté!")
                     else
-                        print("⚠️ Œuf ignoré (prix trop bas):", oeuf.prixNombre, "<", PrixMinimum)
                     end
                 end
             end
