@@ -1,7 +1,3 @@
--- ========================================
--- AUTO BUY EGG - VERSION LINORIALIB
--- ========================================
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local joueur = Players.LocalPlayer
@@ -12,24 +8,24 @@ local ClientUtils = require(ReplicatedStorage:WaitForChild("Client"):WaitForChil
 local rebirths = (ClientUtils.ProfileData and ClientUtils.ProfileData.leaderstats and ClientUtils.ProfileData.leaderstats.Rebirths) or 0
 local Networker = ReplicatedStorage.Shared.Packages.Networker
 
--- ========================================
--- CONFIGURATION
--- ========================================
+-- Chargement de Rayfield
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Configuration des raretés (ORDRE IMPORTANT)
+-- Configuration des raretés (ORDRE IMPORTANT) - NOUVELLE RARETÉ "???" AJOUTÉE
 local RarityOrder = {
-    "Divine", "GOD", "Admin", "Event", "Limited", "OG", "Exclusive",
-    "Exotic", "secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common", "???"
+    "???", "Divine", "GOD", "Admin", "Event", "Limited", "OG", "Exclusive",
+    "Exotic", "secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common"
 }
 
 local RarityConfig = {
+    ["???"] = true, -- Nouvelle rareté activée par défaut
     Divine = true, GOD = true, Admin = true, Event = false, Limited = true,
     OG = false, Exclusive = true, Exotic = false, secret = false, Mythic = false,
-    Legendary = false, Epic = false, Rare = false, Uncommon = false, Common = false,
-    ["???"] = false
+    Legendary = false, Epic = false, Rare = false, Uncommon = false, Common = false
 }
 
 local RarityColors = {
+    ["???"] = Color3.fromRGB(0, 255, 255), -- Couleur cyan pour "???"
     Divine = Color3.fromRGB(255, 215, 0), GOD = Color3.fromRGB(138, 43, 226),
     Admin = Color3.fromRGB(255, 0, 0), Event = Color3.fromRGB(0, 191, 255),
     Limited = Color3.fromRGB(255, 105, 180), OG = Color3.fromRGB(255, 140, 0),
@@ -37,265 +33,31 @@ local RarityColors = {
     secret = Color3.fromRGB(64, 64, 64), Mythic = Color3.fromRGB(255, 20, 147),
     Legendary = Color3.fromRGB(255, 165, 0), Epic = Color3.fromRGB(148, 0, 211),
     Rare = Color3.fromRGB(0, 112, 221), Uncommon = Color3.fromRGB(30, 255, 0),
-    Common = Color3.fromRGB(155, 155, 155), ["???"] = Color3.fromRGB(128, 0, 128)
+    Common = Color3.fromRGB(155, 155, 155)
+}
+
+local PriceOptions = {
+    {text = "Aucun", value = 0}, {text = "$1M", value = 1e6}, {text = "$10M", value = 1e7},
+    {text = "$50M", value = 5e7}, {text = "$100M", value = 1e8}, {text = "$500M", value = 5e8},
+    {text = "$1B", value = 1e9}, {text = "$10B", value = 1e10}, {text = "$50B", value = 5e10},
+    {text = "$100B", value = 1e11}, {text = "$500B", value = 5e11}, {text = "$1T", value = 1e12},
+    {text = "$10T", value = 1e13}, {text = "$50T", value = 5e13}, {text = "$100T", value = 1e14},
+    {text = "$500T", value = 5e14}, {text = "$1Qa", value = 1e15}, {text = "$10Qa", value = 1e16},
+    {text = "$50Qa", value = 5e16}, {text = "$100Qa", value = 1e17}, {text = "$500Qa", value = 5e17},
+    {text = "$1Qi", value = 1e18}
 }
 
 local PrixMinimum = 0
 local ScriptActif = false
 
--- ========================================
--- CHARGEMENT LINORIALIB
--- ========================================
-
-local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua'))()
-local ThemeManager = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua'))()
-local SaveManager = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua'))()
-
--- ========================================
--- RENDRE LA SOURIS VISIBLE
--- ========================================
-local UserInputService = game:GetService("UserInputService")
-UserInputService.MouseIconEnabled = true
-
--- ========================================
--- CRÉATION DE L'INTERFACE
--- ========================================
-
-local Window = Library:CreateWindow({
-    Title = '🥚 Auto Buy Egg',
-    Center = true,
-    AutoShow = true,
-    TabPadding = 8,
-    MenuFadeTime = 0.2
-})
-
--- Création des onglets
-local Tabs = {
-    Main = Window:AddTab('Principal'),
-    Config = Window:AddTab('Raretés'),
-    Settings = Window:AddTab('Paramètres')
-}
-
--- ========================================
--- ONGLET PRINCIPAL
--- ========================================
-
-local MainGroup = Tabs.Main:AddLeftGroupbox('Contrôles')
-
--- Toggle Start/Stop
-MainGroup:AddToggle('ScriptToggle', {
-    Text = 'Activer le script',
-    Default = false,
-    Tooltip = 'Démarre ou arrête l\'achat automatique',
-    
-    Callback = function(Value)
-        ScriptActif = Value
-        print(Value and "✅ Script démarré" or "⏸ Script arrêté")
-    end
-})
-
--- Divider
-MainGroup:AddDivider()
-
--- Label pour afficher le prix minimum actuel
-local PrixLabel = MainGroup:AddLabel('Prix minimum: $0', true)
-
--- Input manuel pour le nombre
-MainGroup:AddInput('PrixInput', {
-    Default = '0',
-    Numeric = true,
-    Finished = false,
-    Text = 'Entrer un nombre',
-    Tooltip = 'Saisissez le nombre (ex: 50 pour 50M)',
-    Placeholder = 'Ex: 50',
-    
-    Callback = function(Value)
-        local nombre = tonumber(Value) or 0
-        SliderValue = nombre
-    end
-})
-
--- Dropdown pour le multiplicateur
-local Multiplicateurs = {
-    {name = 'Aucun (x1)', value = 1},
-    {name = 'K - Mille (x1,000)', value = 1e3},
-    {name = 'M - Million (x1,000,000)', value = 1e6},
-    {name = 'B - Milliard (x1,000,000,000)', value = 1e9},
-    {name = 'T - Trillion', value = 1e12},
-    {name = 'Qa - Quadrillion', value = 1e15},
-    {name = 'Qi - Quintillion', value = 1e18}
-}
-
-local MultNames = {}
-local MultValues = {}
-for _, mult in ipairs(Multiplicateurs) do
-    table.insert(MultNames, mult.name)
-    MultValues[mult.name] = mult.value
-end
-
-MainGroup:AddDropdown('Multiplicateur', {
-    Values = MultNames,
-    Default = 1,
-    Multi = false,
-    Text = 'Multiplicateur',
-    Tooltip = 'Choisissez le multiplicateur (K, M, B, T, etc.)',
-    
-    Callback = function(Value)
-        local multiplier = MultValues[Value] or 1
-        PrixMinimum = SliderValue * multiplier
-        
-        -- Mise à jour du label
-        local function FormatNumber(num)
-            if num >= 1e18 then return string.format("%.1fQi", num/1e18)
-            elseif num >= 1e15 then return string.format("%.1fQa", num/1e15)
-            elseif num >= 1e12 then return string.format("%.1fT", num/1e12)
-            elseif num >= 1e9 then return string.format("%.1fB", num/1e9)
-            elseif num >= 1e6 then return string.format("%.1fM", num/1e6)
-            elseif num >= 1e3 then return string.format("%.1fK", num/1e3)
-            else return tostring(num) end
-        end
-        
-        PrixLabel:SetValue('Prix minimum: $' .. FormatNumber(PrixMinimum))
-        print("Prix minimum défini à: $" .. FormatNumber(PrixMinimum))
-    end
-})
-
--- Boutons rapides
-local QuickGroup = Tabs.Main:AddRightGroupbox('Prix rapides')
-
-local QuickPrices = {
-    {text = "$1M", value = 1e6},
-    {text = "$10M", value = 1e7},
-    {text = "$100M", value = 1e8},
-    {text = "$1B", value = 1e9},
-    {text = "$10B", value = 1e10},
-    {text = "$100B", value = 1e11},
-    {text = "$1T", value = 1e12},
-    {text = "$10T", value = 1e13},
-    {text = "$100T", value = 1e14},
-}
-
-for _, quick in ipairs(QuickPrices) do
-    QuickGroup:AddButton({
-        Text = quick.text,
-        Func = function()
-            PrixMinimum = quick.value
-            PrixLabel:SetValue('Prix minimum: ' .. quick.text)
-            print("Prix minimum défini à:", quick.text)
-        end,
-        DoubleClick = false,
-        Tooltip = 'Définir le prix minimum à ' .. quick.text
-    })
-end
-
--- ========================================
--- ONGLET RARETÉS
--- ========================================
-
-local RareGroup = Tabs.Config:AddLeftGroupbox('Raretés Premium')
-local CommonGroup = Tabs.Config:AddRightGroupbox('Raretés Standard')
-
--- Fonction pour créer les toggles de rareté
-local function CreateRarityToggle(group, rarity)
-    group:AddToggle('Rarity_' .. rarity, {
-        Text = rarity,
-        Default = RarityConfig[rarity],
-        Tooltip = 'Acheter les œufs de rareté ' .. rarity,
-        
-        Callback = function(Value)
-            RarityConfig[rarity] = Value
-        end
-    })
-end
-
--- Raretés premium (groupe gauche)
-local PremiumRarities = {"Divine", "GOD", "Admin", "Event", "Limited", "OG", "Exclusive", "Exotic"}
-for _, rarity in ipairs(PremiumRarities) do
-    CreateRarityToggle(RareGroup, rarity)
-end
-
--- Raretés standard (groupe droit)
-local StandardRarities = {"secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common", "???"}
-for _, rarity in ipairs(StandardRarities) do
-    CreateRarityToggle(CommonGroup, rarity)
-end
-
--- Boutons de sélection rapide
-RareGroup:AddDivider()
-RareGroup:AddButton({
-    Text = 'Tout sélectionner',
-    Func = function()
-        for _, rarity in ipairs(RarityOrder) do
-            RarityConfig[rarity] = true
-            if Library.Toggles['Rarity_' .. rarity] then
-                Library.Toggles['Rarity_' .. rarity]:SetValue(true)
-            end
-        end
-    end,
-    DoubleClick = false,
-})
-
-RareGroup:AddButton({
-    Text = 'Tout désélectionner',
-    Func = function()
-        for _, rarity in ipairs(RarityOrder) do
-            RarityConfig[rarity] = false
-            if Library.Toggles['Rarity_' .. rarity] then
-                Library.Toggles['Rarity_' .. rarity]:SetValue(false)
-            end
-        end
-    end,
-    DoubleClick = false,
-})
-
--- ========================================
--- ONGLET PARAMÈTRES
--- ========================================
-
-local UISettings = Tabs.Settings:AddLeftGroupbox('Interface')
-
-UISettings:AddButton({
-    Text = 'Décharger le script',
-    Func = function()
-        Library:Unload()
-        ScriptActif = false
-        print("Script déchargé")
-    end,
-    DoubleClick = true,
-    Tooltip = 'Double-cliquez pour fermer complètement le script'
-})
-
-UISettings:AddLabel('Version: 2.0 - LinoriaLib')
-UISettings:AddLabel('Crédits: Auto Buy Egg Script')
-
--- ========================================
--- GESTION DES THÈMES ET SAUVEGARDES
--- ========================================
-
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-
--- Ignorer les thèmes si vous voulez juste une interface simple
--- ThemeManager:SetFolder('AutoBuyEgg')
--- ThemeManager:ApplyToTab(Tabs.Settings)
-
-SaveManager:SetFolder('AutoBuyEgg/configs')
-SaveManager:BuildConfigSection(Tabs.Settings)
-SaveManager:LoadAutoloadConfig()
-
--- ========================================
--- FONCTION DE CONVERSION DE PRIX
--- ========================================
-
+-- Fonction pour convertir le texte du prix en nombre
 local function ConvertirPrixEnNombre(prixTexte)
     if not prixTexte or prixTexte == "N/A" then 
         return 0 
     end
     
-    -- Enlever le symbole $ et les espaces
     prixTexte = prixTexte:gsub("%$", ""):gsub("%s+", "")
     
-    -- Vérifier si c'est un format avec virgules (ex: 2,500,000)
     if prixTexte:match("^[%d,]+$") then
         local prixSansVirgules = prixTexte:gsub(",", "")
         local nombre = tonumber(prixSansVirgules)
@@ -304,7 +66,6 @@ local function ConvertirPrixEnNombre(prixTexte)
         end
     end
     
-    -- Format avec suffixe (ex: 2.5M, 100K)
     local suffixes = {
         ["K"] = 1e3,
         ["M"] = 1e6,
@@ -318,6 +79,7 @@ local function ConvertirPrixEnNombre(prixTexte)
     local suffixe = prixTexte:match("[KMBTQ][ai]?$")
     
     if not nombre then
+        print("❌ Impossible d'extraire le nombre de:", prixTexte)
         return 0
     end
     
@@ -329,9 +91,135 @@ local function ConvertirPrixEnNombre(prixTexte)
     return resultat
 end
 
--- ========================================
--- LOGIQUE PRINCIPALE
--- ========================================
+-- Création de l'interface Rayfield
+local Window = Rayfield:CreateWindow({
+    Name = "🥚 Auto Buy Egg",
+    LoadingTitle = "Chargement de l'interface",
+    LoadingSubtitle = "par votre script",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "AutoBuyEggConfig",
+        FileName = "config"
+    },
+    Discord = {
+        Enabled = false,
+    },
+    KeySystem = false,
+})
+
+-- Onglet Principal
+local MainTab = Window:CreateTab("🏠 Principal", nil)
+local MainSection = MainTab:CreateSection("Contrôles")
+
+-- Toggle pour activer/désactiver le script
+local ToggleScript = MainTab:CreateToggle({
+    Name = "▶ Activer le script",
+    CurrentValue = false,
+    Flag = "ToggleScript",
+    Callback = function(Value)
+        ScriptActif = Value
+        if Value then
+            Rayfield:Notify({
+                Title = "Script activé",
+                Content = "L'auto-achat est maintenant actif",
+                Duration = 3,
+                Image = nil,
+            })
+        else
+            Rayfield:Notify({
+                Title = "Script désactivé",
+                Content = "L'auto-achat est maintenant inactif",
+                Duration = 3,
+                Image = nil,
+            })
+        end
+    end,
+})
+
+-- Section Prix
+local PriceSection = MainTab:CreateSection("💰 Configuration du prix minimum")
+
+-- Input pour prix personnalisé
+local PriceInput = MainTab:CreateInput({
+    Name = "Prix minimum personnalisé",
+    PlaceholderText = "Entrer un montant (ex: 1000000)",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        local nombre = tonumber(Text)
+        if nombre then
+            PrixMinimum = nombre
+            Rayfield:Notify({
+                Title = "Prix minimum défini",
+                Content = "Nouveau prix: $" .. Text,
+                Duration = 3,
+            })
+        else
+            Rayfield:Notify({
+                Title = "Erreur",
+                Content = "Veuillez entrer un nombre valide",
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+-- Dropdown pour prix prédéfinis
+local PriceDropdown = MainTab:CreateDropdown({
+    Name = "Prix minimum rapide",
+    Options = {"Aucun", "$1M", "$10M", "$50M", "$100M", "$500M", "$1B", "$10B", "$50B", "$100B", "$500B", "$1T", "$10T", "$50T", "$100T", "$500T", "$1Qa", "$10Qa", "$50Qa", "$100Qa", "$500Qa", "$1Qi"},
+    CurrentOption = {"Aucun"},
+    MultipleOptions = false,
+    Flag = "PriceDropdown",
+    Callback = function(Option)
+        for _, priceOption in ipairs(PriceOptions) do
+            if priceOption.text == Option then
+                PrixMinimum = priceOption.value
+                Rayfield:Notify({
+                    Title = "Prix minimum défini",
+                    Content = Option,
+                    Duration = 3,
+                })
+                break
+            end
+        end
+    end,
+})
+
+-- Onglet Raretés
+local RarityTab = Window:CreateTab("✨ Raretés", nil)
+local RaritySection = RarityTab:CreateSection("Sélection des raretés à acheter")
+
+-- Créer un toggle pour chaque rareté
+for _, rarity in ipairs(RarityOrder) do
+    RarityTab:CreateToggle({
+        Name = rarity,
+        CurrentValue = RarityConfig[rarity],
+        Flag = "Rarity_" .. rarity,
+        Callback = function(Value)
+            RarityConfig[rarity] = Value
+            print("Rareté " .. rarity .. ":", Value and "activée" or "désactivée")
+        end,
+    })
+end
+
+-- Onglet Statistiques
+local StatsTab = Window:CreateTab("📊 Statistiques", nil)
+local StatsSection = StatsTab:CreateSection("Informations")
+
+local StatsLabel = StatsTab:CreateLabel("En attente de données...")
+
+-- Mettre à jour les stats périodiquement
+task.spawn(function()
+    while true do
+        wait(2)
+        if ScriptActif then
+            local oeufs = GetTousLesOeufs()
+            StatsLabel:Set("Œufs disponibles: " .. #oeufs .. " | Prix min: $" .. tostring(PrixMinimum))
+        end
+    end
+end)
+
+-------- Logique d'achat (identique à l'original)
 
 local function GetTousLesOeufs()
     wait(0.1)
@@ -449,12 +337,7 @@ local function AutoBuyEgg()
     end
 end
 
--- ========================================
--- DÉMARRAGE
--- ========================================
-
-print("🥚 Auto Buy Egg - LinoriaLib Edition")
-print("Interface chargée avec succès!")
-
--- Lancer la boucle principale
+-- Démarrer le script d'achat automatique
 task.spawn(AutoBuyEgg)
+
+Rayfield:LoadConfiguration()
