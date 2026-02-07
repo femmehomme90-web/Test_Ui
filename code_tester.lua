@@ -15,7 +15,7 @@ local RarityOrder = {
 }
 
 local RarityConfig = {
-    Divine = true, GOD = true, Admin = true, Event = false, Limited = true,
+    Divine = false, GOD = true, Admin = true, Event = false, Limited = true,
     OG = false, Exclusive = true, Exotic = false, secret = false, Mythic = false,
     Legendary = false, Epic = false, Rare = false, Uncommon = false, Common = false
 }
