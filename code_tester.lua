@@ -143,6 +143,12 @@ local PriceSection = MainTab:CreateSection("💰 Configuration du prix minimum")
 local CustomPriceValue = 0
 local CustomPriceSuffix = 1 -- Multiplicateur par défaut
 
+-- Fonction pour mettre à jour le prix minimum
+local function UpdateMinimumPrice()
+    PrixMinimum = CustomPriceValue * CustomPriceSuffix
+    print("💰 Prix minimum actualisé:", PrixMinimum)
+end
+
 -- Input pour prix personnalisé
 local PriceInput = MainTab:CreateInput({
     Name = "Valeur personnalisée (ex: 10)",
@@ -152,12 +158,15 @@ local PriceInput = MainTab:CreateInput({
         local nombre = tonumber(Text)
         if nombre then
             CustomPriceValue = nombre
-            PrixMinimum = nombre * CustomPriceSuffix
+            UpdateMinimumPrice()
             Rayfield:Notify({
                 Title = "Prix minimum mis à jour",
                 Content = "Nouveau prix: $" .. tostring(PrixMinimum),
                 Duration = 3,
             })
+        elseif Text == "" then
+            CustomPriceValue = 0
+            UpdateMinimumPrice()
         else
             Rayfield:Notify({
                 Title = "Erreur",
@@ -187,15 +196,13 @@ local SuffixDropdown = MainTab:CreateDropdown({
         }
         
         CustomPriceSuffix = suffixes[Option] or 1
+        UpdateMinimumPrice()
         
-        if CustomPriceValue > 0 then
-            PrixMinimum = CustomPriceValue * CustomPriceSuffix
-            Rayfield:Notify({
-                Title = "Prix minimum mis à jour",
-                Content = "Nouveau prix: $" .. tostring(PrixMinimum),
-                Duration = 3,
-            })
-        end
+        Rayfield:Notify({
+            Title = "Prix minimum mis à jour",
+            Content = "Nouveau prix: $" .. tostring(PrixMinimum),
+            Duration = 3,
+        })
     end,
 })
 
