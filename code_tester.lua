@@ -161,8 +161,10 @@ local function CreerInterface()
         Size = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        ScrollBarThickness = 4,
-        CanvasSize = UDim2.new(0, 0, 0, #PriceOptions * 30),
+        ScrollBarThickness = 6,
+        ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110),
+        CanvasSize = UDim2.new(0, 0, 0, #PriceOptions * 32),
+        ZIndex = 11,
         Parent = dropdownMenu
     })
     
@@ -170,12 +172,13 @@ local function CreerInterface()
     for i, option in ipairs(PriceOptions) do
         local optionBtn = CreateElement("TextButton", {
             Size = UDim2.new(1, -10, 0, 28),
-            Position = UDim2.new(0, 5, 0, (i-1) * 30),
+            Position = UDim2.new(0, 5, 0, (i-1) * 32),
             BackgroundColor3 = Color3.fromRGB(45, 45, 50),
             Text = option.text,
             TextColor3 = Color3.new(1, 1, 1),
-            TextSize = 12,
+            TextSize = 13,
             Font = Enum.Font.Gotham,
+            ZIndex = 12,
             Parent = dropdownScroll
         })
         AddCorner(optionBtn, 4)
