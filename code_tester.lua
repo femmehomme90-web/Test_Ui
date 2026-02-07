@@ -132,12 +132,145 @@ local function CreerInterface()
         Parent = main
     })
     
-    -- Dropdown prix
-    local dropdownBtn = CreateElement("TextButton", {
+    -- Container pour prix custom
+    local customPriceFrame = CreateElement("Frame", {
         Size = UDim2.new(1, -30, 0, 35),
         Position = UDim2.new(0, 15, 0, 133),
+        BackgroundTransparency = 1,
+        Parent = main
+    })
+    
+    -- Champ de texte pour le nombre
+    local priceInput = CreateElement("TextBox", {
+        Size = UDim2.new(0, 180, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
         BackgroundColor3 = Color3.fromRGB(40, 40, 45),
-        Text = "Aucun minimum ▼",
+        PlaceholderText = "Entrer un nombre...",
+        PlaceholderColor3 = Color3.fromRGB(120, 120, 120),
+        Text = "",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 13,
+        Font = Enum.Font.Gotham,
+        ClearTextOnFocus = false,
+        Parent = customPriceFrame
+    })
+    AddCorner(priceInput, 6)
+    
+    -- Dropdown pour le suffixe
+    local suffixBtn = CreateElement("TextButton", {
+        Size = UDim2.new(0, 165, 1, 0),
+        Position = UDim2.new(1, -165, 0, 0),
+        BackgroundColor3 = Color3.fromRGB(40, 40, 45),
+        Text = "Aucun ▼",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 13,
+        Font = Enum.Font.Gotham,
+        Parent = customPriceFrame
+    })
+    AddCorner(suffixBtn, 6)
+    
+    -- Liste des suffixes
+    local suffixes = {
+        {text = "Aucun", value = 1},
+        {text = "K (mille)", value = 1e3},
+        {text = "M (million)", value = 1e6},
+        {text = "B (milliard)", value = 1e9},
+        {text = "T (trillion)", value = 1e12},
+        {text = "Qa (quadrillion)", value = 1e15},
+        {text = "Qi (quintillion)", value = 1e18}
+    }
+    local selectedSuffix = 1
+    
+    -- Menu dropdown suffixes (caché par défaut)
+    local suffixMenu = CreateElement("Frame", {
+        Size = UDim2.new(0, 165, 0, 150),
+        Position = UDim2.new(1, -165, 0, 35),
+        BackgroundColor3 = Color3.fromRGB(35, 35, 40),
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 10,
+        Parent = customPriceFrame
+    })
+    AddCorner(suffixMenu, 6)
+    
+    local suffixScroll = CreateElement("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 6,
+        ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110),
+        CanvasSize = UDim2.new(0, 0, 0, #suffixes * 32),
+        ZIndex = 11,
+        Parent = suffixMenu
+    })
+    
+    -- Créer les options de suffixes
+    for i, suffix in ipairs(suffixes) do
+        local suffixOption = CreateElement("TextButton", {
+            Size = UDim2.new(1, -10, 0, 28),
+            Position = UDim2.new(0, 5, 0, (i-1) * 32),
+            BackgroundColor3 = Color3.fromRGB(45, 45, 50),
+            Text = suffix.text,
+            TextColor3 = Color3.new(1, 1, 1),
+            TextSize = 13,
+            Font = Enum.Font.Gotham,
+            ZIndex = 12,
+            Parent = suffixScroll
+        })
+        AddCorner(suffixOption, 4)
+        
+        suffixOption.MouseButton1Click:Connect(function()
+            selectedSuffix = suffix.value
+            suffixBtn.Text = suffix.text:match("^[^%(]+") .. "▼"
+            suffixMenu.Visible = false
+            
+            -- Mettre à jour le prix minimum
+            local inputNumber = tonumber(priceInput.Text)
+            if inputNumber then
+                PrixMinimum = inputNumber * selectedSuffix
+                print("💰 Prix minimum défini:", inputNumber, "x", suffix.text, "=", PrixMinimum)
+            end
+        end)
+    end
+    
+    suffixBtn.MouseButton1Click:Connect(function()
+        suffixMenu.Visible = not suffixMenu.Visible
+    end)
+    
+    -- Mettre à jour le prix quand l'utilisateur tape
+    priceInput:GetPropertyChangedSignal("Text"):Connect(function()
+        local text = priceInput.Text
+        -- Ne garder que les chiffres et le point décimal
+        text = text:gsub("[^%d%.]", "")
+        priceInput.Text = text
+        
+        local inputNumber = tonumber(text)
+        if inputNumber then
+            PrixMinimum = inputNumber * selectedSuffix
+        else
+            PrixMinimum = 0
+        end
+    end)
+    
+    -- Ou label séparateur
+    CreateElement("TextLabel", {
+        Size = UDim2.new(1, -30, 0, 20),
+        Position = UDim2.new(0, 15, 0, 178),
+        BackgroundTransparency = 1,
+        Text = "─── ou choisir un montant rapide ───",
+        TextColor3 = Color3.fromRGB(100, 100, 100),
+        TextSize = 11,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        Parent = main
+    })
+    
+    -- Dropdown prix prédéfinis
+    local dropdownBtn = CreateElement("TextButton", {
+        Size = UDim2.new(1, -30, 0, 35),
+        Position = UDim2.new(0, 15, 0, 203),
+        BackgroundColor3 = Color3.fromRGB(40, 40, 45),
+        Text = "Sélectionner... ▼",
         TextColor3 = Color3.new(1, 1, 1),
         TextSize = 13,
         Font = Enum.Font.Gotham,
@@ -148,7 +281,7 @@ local function CreerInterface()
     -- Menu dropdown (caché par défaut)
     local dropdownMenu = CreateElement("Frame", {
         Size = UDim2.new(1, -30, 0, 150),
-        Position = UDim2.new(0, 15, 0, 170),
+        Position = UDim2.new(0, 15, 0, 240),
         BackgroundColor3 = Color3.fromRGB(35, 35, 40),
         BorderSizePixel = 0,
         Visible = false,
@@ -187,6 +320,11 @@ local function CreerInterface()
             PrixMinimum = option.value
             dropdownBtn.Text = option.text .. " ▼"
             dropdownMenu.Visible = false
+            -- Réinitialiser le champ custom
+            priceInput.Text = ""
+            suffixBtn.Text = "Aucun ▼"
+            selectedSuffix = 1
+            print("💰 Prix minimum défini:", option.text)
         end)
     end
     
@@ -197,7 +335,7 @@ local function CreerInterface()
     -- Label raretés
     CreateElement("TextLabel", {
         Size = UDim2.new(1, -30, 0, 20),
-        Position = UDim2.new(0, 15, 0, 180),
+        Position = UDim2.new(0, 15, 0, 248),
         BackgroundTransparency = 1,
         Text = "Raretés à acheter :",
         TextColor3 = Color3.fromRGB(200, 200, 200),
@@ -209,8 +347,8 @@ local function CreerInterface()
     
     -- Scroll frame pour raretés
     local scroll = CreateElement("ScrollingFrame", {
-        Size = UDim2.new(1, -30, 0, 240),
-        Position = UDim2.new(0, 15, 0, 205),
+        Size = UDim2.new(1, -30, 0, 170),
+        Position = UDim2.new(0, 15, 0, 273),
         BackgroundColor3 = Color3.fromRGB(35, 35, 40),
         BorderSizePixel = 0,
         ScrollBarThickness = 4,
@@ -281,6 +419,7 @@ local function CreerInterface()
     AddCorner(closeBtn, 8)
     
     -- Système de drag
+    local dragging, dragInput, mousePos, framePos
     local dragging, dragInput, mousePos, framePos
     title.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
