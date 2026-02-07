@@ -81,7 +81,8 @@ local function ConvertirPrixEnNombre(prixTexte)
     -- Vérifier si c'est un format avec virgules (ex: 2,500,000)
     if prixTexte:match("^[%d,]+$") then
         -- Enlever toutes les virgules et convertir directement
-        local nombre = tonumber(prixTexte:gsub(",", ""))
+        local prixSansVirgules = prixTexte:gsub(",", "")
+        local nombre = tonumber(prixSansVirgules)
         if nombre then
             print("✅ Converti (format virgule):", prixTexte, "→", nombre)
             return nombre
