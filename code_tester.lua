@@ -67,13 +67,43 @@ end
 
 -- Fonction pour convertir le texte du prix en nombre
 local function ConvertirPrixEnNombre(prixTexte)
-    if not prixTexte or prixTexte == "N/A" then return 0 end
-    prixTexte = prixTexte:gsub("%$", "")
-    local suffixes = {["K"] = 1e3, ["M"] = 1e6, ["B"] = 1e9, ["T"] = 1e12, ["Qa"] = 1e15, ["Qi"] = 1e18}
+    if not prixTexte or prixTexte == "N/A" then 
+        print("⚠️ Prix invalide:", prixTexte)
+        return 0 
+    end
+    
+    -- Afficher le prix original pour debug
+    print("🔍 Prix original:", prixTexte)
+    
+    -- Enlever le symbole $ et les espaces
+    prixTexte = prixTexte:gsub("%$", ""):gsub("%s+", "")
+    
+    -- Dictionnaire des suffixes
+    local suffixes = {
+        ["K"] = 1e3,
+        ["M"] = 1e6,
+        ["B"] = 1e9,
+        ["T"] = 1e12,
+        ["Qa"] = 1e15,
+        ["Qi"] = 1e18,
+    }
+    
+    -- Extraire le nombre et le suffixe
     local nombre = tonumber(prixTexte:match("^[%d%.]+"))
     local suffixe = prixTexte:match("[KMBTQ][ai]?$")
-    if not nombre then return 0 end
-    return suffixe and suffixes[suffixe] and (nombre * suffixes[suffixe]) or nombre
+    
+    if not nombre then
+        print("❌ Impossible d'extraire le nombre de:", prixTexte)
+        return 0
+    end
+    
+    local resultat = nombre
+    if suffixe and suffixes[suffixe] then
+        resultat = nombre * suffixes[suffixe]
+    end
+    
+    print("✅ Converti:", prixTexte, "→", resultat)
+    return resultat
 end
 
 -- Création de l'interface SIMPLIFIÉE
@@ -558,10 +588,15 @@ local function AutoBuyEgg()
             local oeufsRaresATrouves = {}
             
             for _, oeuf in ipairs(oeufs) do
-                if EstRareteRecherchee(oeuf.rarete) and EstPrixSuffisant(oeuf.prixNombre) then
-                    table.insert(oeufsRaresATrouves, oeuf)
-                elseif EstRareteRecherchee(oeuf.rarete) and not EstPrixSuffisant(oeuf.prixNombre) then
-                    print("⚠️ Œuf ignoré (prix trop bas):", oeuf.nom, "-", oeuf.rarete, "-", oeuf.prixTexte)
+                if EstRareteRecherchee(oeuf.rarete) then
+                    print("🔍 Vérification:", oeuf.nom, "-", oeuf.rarete, "- Prix texte:", oeuf.prixTexte, "- Prix nombre:", oeuf.prixNombre, "- Minimum:", PrixMinimum)
+                    
+                    if EstPrixSuffisant(oeuf.prixNombre) then
+                        table.insert(oeufsRaresATrouves, oeuf)
+                        print("✅ Œuf accepté!")
+                    else
+                        print("⚠️ Œuf ignoré (prix trop bas):", oeuf.prixNombre, "<", PrixMinimum)
+                    end
                 end
             end
             
