@@ -19,13 +19,14 @@ local Networker = ReplicatedStorage.Shared.Packages.Networker
 -- Configuration des raretés (ORDRE IMPORTANT)
 local RarityOrder = {
     "Divine", "GOD", "Admin", "Event", "Limited", "OG", "Exclusive",
-    "Exotic", "secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common"
+    "Exotic", "secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common", "???"
 }
 
 local RarityConfig = {
     Divine = true, GOD = true, Admin = true, Event = false, Limited = true,
     OG = false, Exclusive = true, Exotic = false, secret = false, Mythic = false,
-    Legendary = false, Epic = false, Rare = false, Uncommon = false, Common = false
+    Legendary = false, Epic = false, Rare = false, Uncommon = false, Common = false,
+    ["???"] = false
 }
 
 local RarityColors = {
@@ -36,7 +37,7 @@ local RarityColors = {
     secret = Color3.fromRGB(64, 64, 64), Mythic = Color3.fromRGB(255, 20, 147),
     Legendary = Color3.fromRGB(255, 165, 0), Epic = Color3.fromRGB(148, 0, 211),
     Rare = Color3.fromRGB(0, 112, 221), Uncommon = Color3.fromRGB(30, 255, 0),
-    Common = Color3.fromRGB(155, 155, 155)
+    Common = Color3.fromRGB(155, 155, 155), ["???"] = Color3.fromRGB(128, 0, 128)
 }
 
 local PrixMinimum = 0
@@ -49,6 +50,12 @@ local ScriptActif = false
 local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua'))()
 local ThemeManager = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua'))()
 local SaveManager = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua'))()
+
+-- ========================================
+-- RENDRE LA SOURIS VISIBLE
+-- ========================================
+local UserInputService = game:GetService("UserInputService")
+UserInputService.MouseIconEnabled = true
 
 -- ========================================
 -- CRÉATION DE L'INTERFACE
@@ -93,18 +100,18 @@ MainGroup:AddDivider()
 -- Label pour afficher le prix minimum actuel
 local PrixLabel = MainGroup:AddLabel('Prix minimum: $0', true)
 
--- Slider pour le nombre de base
-local SliderValue = 0
-MainGroup:AddSlider('PrixNombre', {
-    Text = 'Nombre',
-    Default = 0,
-    Min = 0,
-    Max = 1000,
-    Rounding = 0,
-    Compact = false,
+-- Input manuel pour le nombre
+MainGroup:AddInput('PrixInput', {
+    Default = '0',
+    Numeric = true,
+    Finished = false,
+    Text = 'Entrer un nombre',
+    Tooltip = 'Saisissez le nombre (ex: 50 pour 50M)',
+    Placeholder = 'Ex: 50',
     
     Callback = function(Value)
-        SliderValue = Value
+        local nombre = tonumber(Value) or 0
+        SliderValue = nombre
     end
 })
 
@@ -149,6 +156,7 @@ MainGroup:AddDropdown('Multiplicateur', {
         end
         
         PrixLabel:SetValue('Prix minimum: $' .. FormatNumber(PrixMinimum))
+        print("Prix minimum défini à: $" .. FormatNumber(PrixMinimum))
     end
 })
 
@@ -207,7 +215,7 @@ for _, rarity in ipairs(PremiumRarities) do
 end
 
 -- Raretés standard (groupe droit)
-local StandardRarities = {"secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common"}
+local StandardRarities = {"secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common", "???"}
 for _, rarity in ipairs(StandardRarities) do
     CreateRarityToggle(CommonGroup, rarity)
 end
