@@ -399,6 +399,9 @@ ToggleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+
+-------- Logique
+
 local function GetTousLesOeufs()
     wait(0.1)
     local EggFolder = workspace.CoreObjects.Eggs
@@ -416,10 +419,14 @@ local function GetTousLesOeufs()
                         local EggFrame = eggBillboard:FindFirstChild("Frame")
                         if EggFrame then 
                             local Rarity = EggFrame:FindFirstChild("Rarity")
+                            local EggName = EggFrame:FindFirstChild("EggName")
+                            local Price = EggFrame:FindFirstChild("Price")
                             if Rarity and Rarity:IsA("TextLabel") then
                                 table.insert(oeufs, {
                                     rarete = Rarity.Text,
-                                    nom = model.Name
+                                    nom = model.Name,
+                                    nomAffiche = EggName and EggName.Text or "N/A",
+                                    prix = Price and Price.Text or "N/A"
                                 })
                             end
                         end
