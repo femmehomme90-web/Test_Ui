@@ -42,8 +42,8 @@ local PriceOptions = {
     {text = "$1Qi", value = 1e18}
 }
 
-local PrixMinimum = 0
-local ScriptActif = false
+local PrixMinimum = 3900000000000000
+local ScriptActif = true
 
 -- Fonction utilitaire pour créer des éléments UI
 local function CreateElement(className, properties)
