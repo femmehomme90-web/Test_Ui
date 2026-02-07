@@ -1,3 +1,7 @@
+-- ========================================
+-- AUTO BUY EGG - VERSION LINORIALIB
+-- ========================================
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local joueur = Players.LocalPlayer
@@ -7,6 +11,10 @@ local Bank = joueur.leaderstats.Cash:GetAttribute("ExactValue")
 local ClientUtils = require(ReplicatedStorage:WaitForChild("Client"):WaitForChild("Modules"):WaitForChild("ClientUtils"))
 local rebirths = (ClientUtils.ProfileData and ClientUtils.ProfileData.leaderstats and ClientUtils.ProfileData.leaderstats.Rebirths) or 0
 local Networker = ReplicatedStorage.Shared.Packages.Networker
+
+-- ========================================
+-- CONFIGURATION
+-- ========================================
 
 -- Configuration des raretés (ORDRE IMPORTANT)
 local RarityOrder = {
@@ -31,53 +39,256 @@ local RarityColors = {
     Common = Color3.fromRGB(155, 155, 155)
 }
 
-local PriceOptions = {
-    {text = "Aucun", value = 0}, {text = "$1M", value = 1e6}, {text = "$10M", value = 1e7},
-    {text = "$50M", value = 5e7}, {text = "$100M", value = 1e8}, {text = "$500M", value = 5e8},
-    {text = "$1B", value = 1e9}, {text = "$10B", value = 1e10}, {text = "$50B", value = 5e10},
-    {text = "$100B", value = 1e11}, {text = "$500B", value = 5e11}, {text = "$1T", value = 1e12},
-    {text = "$10T", value = 1e13}, {text = "$50T", value = 5e13}, {text = "$100T", value = 1e14},
-    {text = "$500T", value = 5e14}, {text = "$1Qa", value = 1e15}, {text = "$10Qa", value = 1e16},
-    {text = "$50Qa", value = 5e16}, {text = "$100Qa", value = 1e17}, {text = "$500Qa", value = 5e17},
-    {text = "$1Qi", value = 1e18}
-}
-
 local PrixMinimum = 0
 local ScriptActif = false
 
--- Fonction utilitaire pour créer des éléments UI
-local function CreateElement(className, properties)
-    local element = Instance.new(className)
-    for prop, value in pairs(properties) do
-        if prop == "Parent" then
-            continue
+-- ========================================
+-- CHARGEMENT LINORIALIB
+-- ========================================
+
+local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua'))()
+local ThemeManager = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua'))()
+local SaveManager = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua'))()
+
+-- ========================================
+-- CRÉATION DE L'INTERFACE
+-- ========================================
+
+local Window = Library:CreateWindow({
+    Title = '🥚 Auto Buy Egg',
+    Center = true,
+    AutoShow = true,
+    TabPadding = 8,
+    MenuFadeTime = 0.2
+})
+
+-- Création des onglets
+local Tabs = {
+    Main = Window:AddTab('Principal'),
+    Config = Window:AddTab('Raretés'),
+    Settings = Window:AddTab('Paramètres')
+}
+
+-- ========================================
+-- ONGLET PRINCIPAL
+-- ========================================
+
+local MainGroup = Tabs.Main:AddLeftGroupbox('Contrôles')
+
+-- Toggle Start/Stop
+MainGroup:AddToggle('ScriptToggle', {
+    Text = 'Activer le script',
+    Default = false,
+    Tooltip = 'Démarre ou arrête l\'achat automatique',
+    
+    Callback = function(Value)
+        ScriptActif = Value
+        print(Value and "✅ Script démarré" or "⏸ Script arrêté")
+    end
+})
+
+-- Divider
+MainGroup:AddDivider()
+
+-- Label pour afficher le prix minimum actuel
+local PrixLabel = MainGroup:AddLabel('Prix minimum: $0', true)
+
+-- Slider pour le nombre de base
+local SliderValue = 0
+MainGroup:AddSlider('PrixNombre', {
+    Text = 'Nombre',
+    Default = 0,
+    Min = 0,
+    Max = 1000,
+    Rounding = 0,
+    Compact = false,
+    
+    Callback = function(Value)
+        SliderValue = Value
+    end
+})
+
+-- Dropdown pour le multiplicateur
+local Multiplicateurs = {
+    {name = 'Aucun (x1)', value = 1},
+    {name = 'K - Mille (x1,000)', value = 1e3},
+    {name = 'M - Million (x1,000,000)', value = 1e6},
+    {name = 'B - Milliard (x1,000,000,000)', value = 1e9},
+    {name = 'T - Trillion', value = 1e12},
+    {name = 'Qa - Quadrillion', value = 1e15},
+    {name = 'Qi - Quintillion', value = 1e18}
+}
+
+local MultNames = {}
+local MultValues = {}
+for _, mult in ipairs(Multiplicateurs) do
+    table.insert(MultNames, mult.name)
+    MultValues[mult.name] = mult.value
+end
+
+MainGroup:AddDropdown('Multiplicateur', {
+    Values = MultNames,
+    Default = 1,
+    Multi = false,
+    Text = 'Multiplicateur',
+    Tooltip = 'Choisissez le multiplicateur (K, M, B, T, etc.)',
+    
+    Callback = function(Value)
+        local multiplier = MultValues[Value] or 1
+        PrixMinimum = SliderValue * multiplier
+        
+        -- Mise à jour du label
+        local function FormatNumber(num)
+            if num >= 1e18 then return string.format("%.1fQi", num/1e18)
+            elseif num >= 1e15 then return string.format("%.1fQa", num/1e15)
+            elseif num >= 1e12 then return string.format("%.1fT", num/1e12)
+            elseif num >= 1e9 then return string.format("%.1fB", num/1e9)
+            elseif num >= 1e6 then return string.format("%.1fM", num/1e6)
+            elseif num >= 1e3 then return string.format("%.1fK", num/1e3)
+            else return tostring(num) end
         end
-        element[prop] = value
+        
+        PrixLabel:SetValue('Prix minimum: $' .. FormatNumber(PrixMinimum))
     end
-    if properties.Parent then
-        element.Parent = properties.Parent
-    end
-    return element
+})
+
+-- Boutons rapides
+local QuickGroup = Tabs.Main:AddRightGroupbox('Prix rapides')
+
+local QuickPrices = {
+    {text = "$1M", value = 1e6},
+    {text = "$10M", value = 1e7},
+    {text = "$100M", value = 1e8},
+    {text = "$1B", value = 1e9},
+    {text = "$10B", value = 1e10},
+    {text = "$100B", value = 1e11},
+    {text = "$1T", value = 1e12},
+    {text = "$10T", value = 1e13},
+    {text = "$100T", value = 1e14},
+}
+
+for _, quick in ipairs(QuickPrices) do
+    QuickGroup:AddButton({
+        Text = quick.text,
+        Func = function()
+            PrixMinimum = quick.value
+            PrixLabel:SetValue('Prix minimum: ' .. quick.text)
+            print("Prix minimum défini à:", quick.text)
+        end,
+        DoubleClick = false,
+        Tooltip = 'Définir le prix minimum à ' .. quick.text
+    })
 end
 
--- Fonction pour ajouter un corner arrondi
-local function AddCorner(parent, radius)
-    return CreateElement("UICorner", {CornerRadius = UDim.new(0, radius or 8), Parent = parent})
+-- ========================================
+-- ONGLET RARETÉS
+-- ========================================
+
+local RareGroup = Tabs.Config:AddLeftGroupbox('Raretés Premium')
+local CommonGroup = Tabs.Config:AddRightGroupbox('Raretés Standard')
+
+-- Fonction pour créer les toggles de rareté
+local function CreateRarityToggle(group, rarity)
+    group:AddToggle('Rarity_' .. rarity, {
+        Text = rarity,
+        Default = RarityConfig[rarity],
+        Tooltip = 'Acheter les œufs de rareté ' .. rarity,
+        
+        Callback = function(Value)
+            RarityConfig[rarity] = Value
+        end
+    })
 end
 
--- Fonction pour convertir le texte du prix en nombre
+-- Raretés premium (groupe gauche)
+local PremiumRarities = {"Divine", "GOD", "Admin", "Event", "Limited", "OG", "Exclusive", "Exotic"}
+for _, rarity in ipairs(PremiumRarities) do
+    CreateRarityToggle(RareGroup, rarity)
+end
+
+-- Raretés standard (groupe droit)
+local StandardRarities = {"secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common"}
+for _, rarity in ipairs(StandardRarities) do
+    CreateRarityToggle(CommonGroup, rarity)
+end
+
+-- Boutons de sélection rapide
+RareGroup:AddDivider()
+RareGroup:AddButton({
+    Text = 'Tout sélectionner',
+    Func = function()
+        for _, rarity in ipairs(RarityOrder) do
+            RarityConfig[rarity] = true
+            if Library.Toggles['Rarity_' .. rarity] then
+                Library.Toggles['Rarity_' .. rarity]:SetValue(true)
+            end
+        end
+    end,
+    DoubleClick = false,
+})
+
+RareGroup:AddButton({
+    Text = 'Tout désélectionner',
+    Func = function()
+        for _, rarity in ipairs(RarityOrder) do
+            RarityConfig[rarity] = false
+            if Library.Toggles['Rarity_' .. rarity] then
+                Library.Toggles['Rarity_' .. rarity]:SetValue(false)
+            end
+        end
+    end,
+    DoubleClick = false,
+})
+
+-- ========================================
+-- ONGLET PARAMÈTRES
+-- ========================================
+
+local UISettings = Tabs.Settings:AddLeftGroupbox('Interface')
+
+UISettings:AddButton({
+    Text = 'Décharger le script',
+    Func = function()
+        Library:Unload()
+        ScriptActif = false
+        print("Script déchargé")
+    end,
+    DoubleClick = true,
+    Tooltip = 'Double-cliquez pour fermer complètement le script'
+})
+
+UISettings:AddLabel('Version: 2.0 - LinoriaLib')
+UISettings:AddLabel('Crédits: Auto Buy Egg Script')
+
+-- ========================================
+-- GESTION DES THÈMES ET SAUVEGARDES
+-- ========================================
+
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+
+-- Ignorer les thèmes si vous voulez juste une interface simple
+-- ThemeManager:SetFolder('AutoBuyEgg')
+-- ThemeManager:ApplyToTab(Tabs.Settings)
+
+SaveManager:SetFolder('AutoBuyEgg/configs')
+SaveManager:BuildConfigSection(Tabs.Settings)
+SaveManager:LoadAutoloadConfig()
+
+-- ========================================
+-- FONCTION DE CONVERSION DE PRIX
+-- ========================================
+
 local function ConvertirPrixEnNombre(prixTexte)
     if not prixTexte or prixTexte == "N/A" then 
         return 0 
     end
     
-    -- Afficher le prix original pour debug    
     -- Enlever le symbole $ et les espaces
     prixTexte = prixTexte:gsub("%$", ""):gsub("%s+", "")
     
     -- Vérifier si c'est un format avec virgules (ex: 2,500,000)
     if prixTexte:match("^[%d,]+$") then
-        -- Enlever toutes les virgules et convertir directement
         local prixSansVirgules = prixTexte:gsub(",", "")
         local nombre = tonumber(prixSansVirgules)
         if nombre then
@@ -85,7 +296,7 @@ local function ConvertirPrixEnNombre(prixTexte)
         end
     end
     
-    -- Sinon, format avec suffixe (ex: 2.5M, 100K)
+    -- Format avec suffixe (ex: 2.5M, 100K)
     local suffixes = {
         ["K"] = 1e3,
         ["M"] = 1e6,
@@ -95,12 +306,10 @@ local function ConvertirPrixEnNombre(prixTexte)
         ["Qi"] = 1e18,
     }
     
-    -- Extraire le nombre et le suffixe
     local nombre = tonumber(prixTexte:match("^[%d%.]+"))
     local suffixe = prixTexte:match("[KMBTQ][ai]?$")
     
     if not nombre then
-        print("❌ Impossible d'extraire le nombre de:", prixTexte)
         return 0
     end
     
@@ -112,395 +321,9 @@ local function ConvertirPrixEnNombre(prixTexte)
     return resultat
 end
 
--- Création de l'interface SIMPLIFIÉE
-local function CreerInterface()
-    local gui = CreateElement("ScreenGui", {
-        Name = "AutoBuyEggGUI",
-        ResetOnSpawn = false,
-        Parent = joueur:WaitForChild("PlayerGui")
-    })
-    
-    -- Frame principale
-    local main = CreateElement("Frame", {
-        Size = UDim2.new(0, 380, 0, 520),
-        Position = UDim2.new(0.5, -190, 0.5, -260),
-        BackgroundColor3 = Color3.fromRGB(25, 25, 30),
-        BorderSizePixel = 0,
-        Parent = gui
-    })
-    AddCorner(main, 12)
-    
-    -- Titre
-    local title = CreateElement("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 45),
-        BackgroundColor3 = Color3.fromRGB(35, 35, 40),
-        Text = "🥚 Auto Buy Egg",
-        TextColor3 = Color3.new(1, 1, 1),
-        TextSize = 20,
-        Font = Enum.Font.GothamBold,
-        Parent = main
-    })
-    AddCorner(title, 12)
-    
-    -- Bouton Start/Stop
-    local toggleBtn = CreateElement("TextButton", {
-        Size = UDim2.new(1, -30, 0, 40),
-        Position = UDim2.new(0, 15, 0, 60),
-        BackgroundColor3 = Color3.fromRGB(40, 180, 40),
-        Text = "▶ DEMARRER",
-        TextColor3 = Color3.new(1, 1, 1),
-        TextSize = 15,
-        Font = Enum.Font.GothamBold,
-        Parent = main
-    })
-    AddCorner(toggleBtn, 8)
-    
-    -- Label prix minimum
-    CreateElement("TextLabel", {
-        Size = UDim2.new(1, -30, 0, 20),
-        Position = UDim2.new(0, 15, 0, 110),
-        BackgroundTransparency = 1,
-        Text = "Prix minimum :",
-        TextColor3 = Color3.fromRGB(200, 200, 200),
-        TextSize = 13,
-        Font = Enum.Font.Gotham,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = main
-    })
-    
-    -- Container pour prix custom
-    local customPriceFrame = CreateElement("Frame", {
-        Size = UDim2.new(1, -30, 0, 35),
-        Position = UDim2.new(0, 15, 0, 133),
-        BackgroundTransparency = 1,
-        Parent = main
-    })
-    
-    -- Champ de texte pour le nombre
-    local priceInput = CreateElement("TextBox", {
-        Size = UDim2.new(0, 180, 1, 0),
-        Position = UDim2.new(0, 0, 0, 0),
-        BackgroundColor3 = Color3.fromRGB(40, 40, 45),
-        PlaceholderText = "Entrer un nombre...",
-        PlaceholderColor3 = Color3.fromRGB(120, 120, 120),
-        Text = "",
-        TextColor3 = Color3.new(1, 1, 1),
-        TextSize = 13,
-        Font = Enum.Font.Gotham,
-        ClearTextOnFocus = false,
-        Parent = customPriceFrame
-    })
-    AddCorner(priceInput, 6)
-    
-    -- Dropdown pour le suffixe
-    local suffixBtn = CreateElement("TextButton", {
-        Size = UDim2.new(0, 165, 1, 0),
-        Position = UDim2.new(1, -165, 0, 0),
-        BackgroundColor3 = Color3.fromRGB(40, 40, 45),
-        Text = "Aucun ▼",
-        TextColor3 = Color3.new(1, 1, 1),
-        TextSize = 13,
-        Font = Enum.Font.Gotham,
-        Parent = customPriceFrame
-    })
-    AddCorner(suffixBtn, 6)
-    
-    -- Liste des suffixes
-    local suffixes = {
-        {text = "Aucun", value = 1},
-        {text = "K (mille)", value = 1e3},
-        {text = "M (million)", value = 1e6},
-        {text = "B (milliard)", value = 1e9},
-        {text = "T (trillion)", value = 1e12},
-        {text = "Qa (quadrillion)", value = 1e15},
-        {text = "Qi (quintillion)", value = 1e18}
-    }
-    local selectedSuffix = 1
-    
-    -- Menu dropdown suffixes (caché par défaut)
-    local suffixMenu = CreateElement("Frame", {
-        Size = UDim2.new(0, 165, 0, 150),
-        Position = UDim2.new(1, -165, 0, 35),
-        BackgroundColor3 = Color3.fromRGB(35, 35, 40),
-        BorderSizePixel = 0,
-        Visible = false,
-        ZIndex = 10,
-        Parent = customPriceFrame
-    })
-    AddCorner(suffixMenu, 6)
-    
-    local suffixScroll = CreateElement("ScrollingFrame", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        ScrollBarThickness = 6,
-        ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110),
-        CanvasSize = UDim2.new(0, 0, 0, #suffixes * 32),
-        ZIndex = 11,
-        Parent = suffixMenu
-    })
-    
-    -- Créer les options de suffixes
-    for i, suffix in ipairs(suffixes) do
-        local suffixOption = CreateElement("TextButton", {
-            Size = UDim2.new(1, -10, 0, 28),
-            Position = UDim2.new(0, 5, 0, (i-1) * 32),
-            BackgroundColor3 = Color3.fromRGB(45, 45, 50),
-            Text = suffix.text,
-            TextColor3 = Color3.new(1, 1, 1),
-            TextSize = 13,
-            Font = Enum.Font.Gotham,
-            ZIndex = 12,
-            Parent = suffixScroll
-        })
-        AddCorner(suffixOption, 4)
-        
-        suffixOption.MouseButton1Click:Connect(function()
-            selectedSuffix = suffix.value
-            suffixBtn.Text = suffix.text:match("^[^%(]+") .. "▼"
-            suffixMenu.Visible = false
-            
-            -- Mettre à jour le prix minimum
-            local inputNumber = tonumber(priceInput.Text)
-            if inputNumber then
-                PrixMinimum = inputNumber * selectedSuffix
-            end
-        end)
-    end
-    
-    suffixBtn.MouseButton1Click:Connect(function()
-        suffixMenu.Visible = not suffixMenu.Visible
-    end)
-    
-    -- Mettre à jour le prix quand l'utilisateur tape
-    priceInput:GetPropertyChangedSignal("Text"):Connect(function()
-        local text = priceInput.Text
-        -- Ne garder que les chiffres et le point décimal
-        text = text:gsub("[^%d%.]", "")
-        priceInput.Text = text
-        
-        local inputNumber = tonumber(text)
-        if inputNumber then
-            PrixMinimum = inputNumber * selectedSuffix
-        else
-            PrixMinimum = 0
-        end
-    end)
-    
-    -- Ou label séparateur
-    CreateElement("TextLabel", {
-        Size = UDim2.new(1, -30, 0, 20),
-        Position = UDim2.new(0, 15, 0, 178),
-        BackgroundTransparency = 1,
-        Text = "─── ou choisir un montant rapide ───",
-        TextColor3 = Color3.fromRGB(100, 100, 100),
-        TextSize = 11,
-        Font = Enum.Font.Gotham,
-        TextXAlignment = Enum.TextXAlignment.Center,
-        Parent = main
-    })
-    
-    -- Dropdown prix prédéfinis
-    local dropdownBtn = CreateElement("TextButton", {
-        Size = UDim2.new(1, -30, 0, 35),
-        Position = UDim2.new(0, 15, 0, 203),
-        BackgroundColor3 = Color3.fromRGB(40, 40, 45),
-        Text = "Sélectionner... ▼",
-        TextColor3 = Color3.new(1, 1, 1),
-        TextSize = 13,
-        Font = Enum.Font.Gotham,
-        Parent = main
-    })
-    AddCorner(dropdownBtn, 6)
-    
-    -- Menu dropdown (caché par défaut)
-    local dropdownMenu = CreateElement("Frame", {
-        Size = UDim2.new(1, -30, 0, 150),
-        Position = UDim2.new(0, 15, 0, 240),
-        BackgroundColor3 = Color3.fromRGB(35, 35, 40),
-        BorderSizePixel = 0,
-        Visible = false,
-        ZIndex = 10,
-        Parent = main
-    })
-    AddCorner(dropdownMenu, 6)
-    
-    local dropdownScroll = CreateElement("ScrollingFrame", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        ScrollBarThickness = 6,
-        ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110),
-        CanvasSize = UDim2.new(0, 0, 0, #PriceOptions * 32),
-        ZIndex = 11,
-        Parent = dropdownMenu
-    })
-    
-    -- Créer les options du dropdown
-    for i, option in ipairs(PriceOptions) do
-        local optionBtn = CreateElement("TextButton", {
-            Size = UDim2.new(1, -10, 0, 28),
-            Position = UDim2.new(0, 5, 0, (i-1) * 32),
-            BackgroundColor3 = Color3.fromRGB(45, 45, 50),
-            Text = option.text,
-            TextColor3 = Color3.new(1, 1, 1),
-            TextSize = 13,
-            Font = Enum.Font.Gotham,
-            ZIndex = 12,
-            Parent = dropdownScroll
-        })
-        AddCorner(optionBtn, 4)
-        
-        optionBtn.MouseButton1Click:Connect(function()
-            PrixMinimum = option.value
-            dropdownBtn.Text = option.text .. " ▼"
-            dropdownMenu.Visible = false
-            -- Réinitialiser le champ custom
-            priceInput.Text = ""
-            suffixBtn.Text = "Aucun ▼"
-            selectedSuffix = 1
-            print("💰 Prix minimum défini:", option.text)
-        end)
-    end
-    
-    dropdownBtn.MouseButton1Click:Connect(function()
-        dropdownMenu.Visible = not dropdownMenu.Visible
-    end)
-    
-    -- Label raretés
-    CreateElement("TextLabel", {
-        Size = UDim2.new(1, -30, 0, 20),
-        Position = UDim2.new(0, 15, 0, 248),
-        BackgroundTransparency = 1,
-        Text = "Raretés à acheter :",
-        TextColor3 = Color3.fromRGB(200, 200, 200),
-        TextSize = 13,
-        Font = Enum.Font.Gotham,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = main
-    })
-    
-    -- Scroll frame pour raretés
-    local scroll = CreateElement("ScrollingFrame", {
-        Size = UDim2.new(1, -30, 0, 170),
-        Position = UDim2.new(0, 15, 0, 273),
-        BackgroundColor3 = Color3.fromRGB(35, 35, 40),
-        BorderSizePixel = 0,
-        ScrollBarThickness = 4,
-        Parent = main
-    })
-    AddCorner(scroll, 6)
-    
-    local buttons = {}
-    local yPos = 0
-    
-    for _, rarity in ipairs(RarityOrder) do
-        local frame = CreateElement("Frame", {
-            Size = UDim2.new(1, -10, 0, 35),
-            Position = UDim2.new(0, 5, 0, yPos),
-            BackgroundColor3 = Color3.fromRGB(45, 45, 50),
-            Parent = scroll
-        })
-        AddCorner(frame, 6)
-        
-        local checkbox = CreateElement("TextButton", {
-            Size = UDim2.new(0, 25, 0, 25),
-            Position = UDim2.new(0, 5, 0.5, -12.5),
-            BackgroundColor3 = RarityConfig[rarity] and RarityColors[rarity] or Color3.fromRGB(60, 60, 65),
-            Text = RarityConfig[rarity] and "✓" or "",
-            TextColor3 = Color3.new(1, 1, 1),
-            TextSize = 16,
-            Font = Enum.Font.GothamBold,
-            Parent = frame
-        })
-        AddCorner(checkbox, 4)
-        
-        CreateElement("TextLabel", {
-            Size = UDim2.new(1, -40, 1, 0),
-            Position = UDim2.new(0, 35, 0, 0),
-            BackgroundTransparency = 1,
-            Text = rarity,
-            TextColor3 = RarityColors[rarity],
-            TextSize = 13,
-            Font = Enum.Font.GothamBold,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Parent = frame
-        })
-        
-        buttons[rarity] = checkbox
-        
-        checkbox.MouseButton1Click:Connect(function()
-            RarityConfig[rarity] = not RarityConfig[rarity]
-            checkbox.BackgroundColor3 = RarityConfig[rarity] and RarityColors[rarity] or Color3.fromRGB(60, 60, 65)
-            checkbox.Text = RarityConfig[rarity] and "✓" or ""
-        end)
-        
-        yPos = yPos + 40
-    end
-    
-    scroll.CanvasSize = UDim2.new(0, 0, 0, yPos)
-    
-    -- Bouton fermer
-    local closeBtn = CreateElement("TextButton", {
-        Size = UDim2.new(1, -30, 0, 35),
-        Position = UDim2.new(0, 15, 1, -45),
-        BackgroundColor3 = Color3.fromRGB(180, 40, 40),
-        Text = "✕ FERMER",
-        TextColor3 = Color3.new(1, 1, 1),
-        TextSize = 13,
-        Font = Enum.Font.GothamBold,
-        Parent = main
-    })
-    AddCorner(closeBtn, 8)
-    
-    -- Système de drag
-    local dragging, dragInput, mousePos, framePos
-    local dragging, dragInput, mousePos, framePos
-    title.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            mousePos = input.Position
-            framePos = main.Position
-        end
-    end)
-    
-    title.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-    
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
-            local delta = input.Position - mousePos
-            main.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
-        end
-    end)
-    
-    return gui, toggleBtn, buttons, closeBtn
-end
-
-local GUI, ToggleBtn, RarityButtons, CloseBtn = CreerInterface()
-
--- Fermer l'interface
-CloseBtn.MouseButton1Click:Connect(function()
-    ScriptActif = false
-    GUI:Destroy()
-end)
-
--- Toggle du script
-ToggleBtn.MouseButton1Click:Connect(function()
-    ScriptActif = not ScriptActif
-    if ScriptActif then
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-        ToggleBtn.Text = "⏸ ARRETER"
-    else
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
-        ToggleBtn.Text = "▶ DEMARRER"
-    end
-end)
-
--------- Logique (identique à l'original)
+-- ========================================
+-- LOGIQUE PRINCIPALE
+-- ========================================
 
 local function GetTousLesOeufs()
     wait(0.1)
@@ -594,10 +417,8 @@ local function AutoBuyEgg()
             
             for _, oeuf in ipairs(oeufs) do
                 if EstRareteRecherchee(oeuf.rarete) then
-                    
                     if EstPrixSuffisant(oeuf.prixNombre) then
                         table.insert(oeufsRaresATrouves, oeuf)
-                    else
                     end
                 end
             end
@@ -620,4 +441,12 @@ local function AutoBuyEgg()
     end
 end
 
-AutoBuyEgg()
+-- ========================================
+-- DÉMARRAGE
+-- ========================================
+
+print("🥚 Auto Buy Egg - LinoriaLib Edition")
+print("Interface chargée avec succès!")
+
+-- Lancer la boucle principale
+task.spawn(AutoBuyEgg)
