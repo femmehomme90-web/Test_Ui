@@ -10,6 +10,7 @@ local ClientUtils = require(ReplicatedStorage.Client.Modules.ClientUtils)
 
 local PrixMinimum = 0
 local ScriptActif = false
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/Rayfield-Development/Rayfield/master/source"))()
 
 -- ======================================================
 -- 🧬 RARETÉS
@@ -65,7 +66,7 @@ end
 -- ======================================================
 -- 🖥️ RAYFIELD UI
 -- ======================================================
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
 
 local Window = Rayfield:CreateWindow({
     Name = "🥚 Auto Buy Egg",
