@@ -139,24 +139,60 @@ local ToggleScript = MainTab:CreateToggle({
 -- Section Prix
 local PriceSection = MainTab:CreateSection("💰 Configuration du prix minimum")
 
+-- Variables pour le prix personnalisé
+local CustomPriceValue = 0
+local CustomPriceSuffix = 1 -- Multiplicateur par défaut
+
 -- Input pour prix personnalisé
 local PriceInput = MainTab:CreateInput({
-    Name = "Prix minimum personnalisé",
-    PlaceholderText = "Entrer un montant (ex: 1000000)",
+    Name = "Valeur personnalisée (ex: 10)",
+    PlaceholderText = "Entrer un nombre",
     RemoveTextAfterFocusLost = false,
     Callback = function(Text)
         local nombre = tonumber(Text)
         if nombre then
-            PrixMinimum = nombre
+            CustomPriceValue = nombre
+            PrixMinimum = nombre * CustomPriceSuffix
             Rayfield:Notify({
-                Title = "Prix minimum défini",
-                Content = "Nouveau prix: $" .. Text,
+                Title = "Prix minimum mis à jour",
+                Content = "Nouveau prix: $" .. tostring(PrixMinimum),
                 Duration = 3,
             })
         else
             Rayfield:Notify({
                 Title = "Erreur",
                 Content = "Veuillez entrer un nombre valide",
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+-- Dropdown pour les suffixes
+local SuffixDropdown = MainTab:CreateDropdown({
+    Name = "Suffixe (multiplicateur)",
+    Options = {"Aucun (x1)", "K (x1,000)", "M (x1,000,000)", "B (x1,000,000,000)", "T (x1,000,000,000,000)", "Qa (x1,000,000,000,000,000)", "Qi (x1,000,000,000,000,000,000)"},
+    CurrentOption = {"Aucun (x1)"},
+    MultipleOptions = false,
+    Flag = "SuffixDropdown",
+    Callback = function(Option)
+        local suffixes = {
+            ["Aucun (x1)"] = 1,
+            ["K (x1,000)"] = 1e3,
+            ["M (x1,000,000)"] = 1e6,
+            ["B (x1,000,000,000)"] = 1e9,
+            ["T (x1,000,000,000,000)"] = 1e12,
+            ["Qa (x1,000,000,000,000,000)"] = 1e15,
+            ["Qi (x1,000,000,000,000,000,000)"] = 1e18
+        }
+        
+        CustomPriceSuffix = suffixes[Option] or 1
+        
+        if CustomPriceValue > 0 then
+            PrixMinimum = CustomPriceValue * CustomPriceSuffix
+            Rayfield:Notify({
+                Title = "Prix minimum mis à jour",
+                Content = "Nouveau prix: $" .. tostring(PrixMinimum),
                 Duration = 3,
             })
         end
