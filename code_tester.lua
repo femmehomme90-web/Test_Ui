@@ -8,24 +8,19 @@ local ClientUtils = require(ReplicatedStorage:WaitForChild("Client"):WaitForChil
 local rebirths = (ClientUtils.ProfileData and ClientUtils.ProfileData.leaderstats and ClientUtils.ProfileData.leaderstats.Rebirths) or 0
 local Networker = ReplicatedStorage.Shared.Packages.Networker
 
--- Chargement de Rayfield
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
--- Configuration des raretés (ORDRE IMPORTANT) - NOUVELLE RARETÉ "???" AJOUTÉE
+-- Configuration des raretés (ORDRE IMPORTANT)
 local RarityOrder = {
-    "???", "Divine", "GOD", "Admin", "Event", "Limited", "OG", "Exclusive",
+    "Divine", "GOD", "Admin", "Event", "Limited", "OG", "Exclusive",
     "Exotic", "secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common"
 }
 
 local RarityConfig = {
-    ["???"] = true, -- Nouvelle rareté activée par défaut
     Divine = true, GOD = true, Admin = true, Event = false, Limited = true,
     OG = false, Exclusive = true, Exotic = false, secret = false, Mythic = false,
     Legendary = false, Epic = false, Rare = false, Uncommon = false, Common = false
 }
 
 local RarityColors = {
-    ["???"] = Color3.fromRGB(0, 255, 255), -- Couleur cyan pour "???"
     Divine = Color3.fromRGB(255, 215, 0), GOD = Color3.fromRGB(138, 43, 226),
     Admin = Color3.fromRGB(255, 0, 0), Event = Color3.fromRGB(0, 191, 255),
     Limited = Color3.fromRGB(255, 105, 180), OG = Color3.fromRGB(255, 140, 0),
@@ -50,15 +45,39 @@ local PriceOptions = {
 local PrixMinimum = 0
 local ScriptActif = false
 
+-- Fonction utilitaire pour créer des éléments UI
+local function CreateElement(className, properties)
+    local element = Instance.new(className)
+    for prop, value in pairs(properties) do
+        if prop == "Parent" then
+            continue
+        end
+        element[prop] = value
+    end
+    if properties.Parent then
+        element.Parent = properties.Parent
+    end
+    return element
+end
+
+-- Fonction pour ajouter un corner arrondi
+local function AddCorner(parent, radius)
+    return CreateElement("UICorner", {CornerRadius = UDim.new(0, radius or 8), Parent = parent})
+end
+
 -- Fonction pour convertir le texte du prix en nombre
 local function ConvertirPrixEnNombre(prixTexte)
     if not prixTexte or prixTexte == "N/A" then 
         return 0 
     end
     
+    -- Afficher le prix original pour debug    
+    -- Enlever le symbole $ et les espaces
     prixTexte = prixTexte:gsub("%$", ""):gsub("%s+", "")
     
+    -- Vérifier si c'est un format avec virgules (ex: 2,500,000)
     if prixTexte:match("^[%d,]+$") then
+        -- Enlever toutes les virgules et convertir directement
         local prixSansVirgules = prixTexte:gsub(",", "")
         local nombre = tonumber(prixSansVirgules)
         if nombre then
@@ -66,6 +85,7 @@ local function ConvertirPrixEnNombre(prixTexte)
         end
     end
     
+    -- Sinon, format avec suffixe (ex: 2.5M, 100K)
     local suffixes = {
         ["K"] = 1e3,
         ["M"] = 1e6,
@@ -75,6 +95,7 @@ local function ConvertirPrixEnNombre(prixTexte)
         ["Qi"] = 1e18,
     }
     
+    -- Extraire le nombre et le suffixe
     local nombre = tonumber(prixTexte:match("^[%d%.]+"))
     local suffixe = prixTexte:match("[KMBTQ][ai]?$")
     
@@ -91,178 +112,395 @@ local function ConvertirPrixEnNombre(prixTexte)
     return resultat
 end
 
--- Création de l'interface Rayfield
-local Window = Rayfield:CreateWindow({
-    Name = "🥚 Auto Buy Egg",
-    LoadingTitle = "Chargement de l'interface",
-    LoadingSubtitle = "par votre script",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "AutoBuyEggConfig",
-        FileName = "config"
-    },
-    Discord = {
-        Enabled = false,
-    },
-    KeySystem = false,
-})
-
--- Onglet Principal
-local MainTab = Window:CreateTab("🏠 Principal", nil)
-local MainSection = MainTab:CreateSection("Contrôles")
-
--- Toggle pour activer/désactiver le script
-local ToggleScript = MainTab:CreateToggle({
-    Name = "▶ Activer le script",
-    CurrentValue = false,
-    Flag = "ToggleScript",
-    Callback = function(Value)
-        ScriptActif = Value
-        if Value then
-            Rayfield:Notify({
-                Title = "Script activé",
-                Content = "L'auto-achat est maintenant actif",
-                Duration = 3,
-                Image = nil,
-            })
-        else
-            Rayfield:Notify({
-                Title = "Script désactivé",
-                Content = "L'auto-achat est maintenant inactif",
-                Duration = 3,
-                Image = nil,
-            })
-        end
-    end,
-})
-
--- Section Prix
-local PriceSection = MainTab:CreateSection("💰 Configuration du prix minimum")
-
--- Variables pour le prix personnalisé
-local CustomPriceValue = 0
-local CustomPriceSuffix = 1 -- Multiplicateur par défaut
-
--- Fonction pour mettre à jour le prix minimum
-local function UpdateMinimumPrice()
-    PrixMinimum = CustomPriceValue * CustomPriceSuffix
-    print("💰 Prix minimum actualisé:", PrixMinimum)
-end
-
--- Input pour prix personnalisé
-local PriceInput = MainTab:CreateInput({
-    Name = "Valeur personnalisée (ex: 10)",
-    PlaceholderText = "Entrer un nombre",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(Text)
-        local nombre = tonumber(Text)
-        if nombre then
-            CustomPriceValue = nombre
-            UpdateMinimumPrice()
-            Rayfield:Notify({
-                Title = "Prix minimum mis à jour",
-                Content = "Nouveau prix: $" .. tostring(PrixMinimum),
-                Duration = 3,
-            })
-        elseif Text == "" then
-            CustomPriceValue = 0
-            UpdateMinimumPrice()
-        else
-            Rayfield:Notify({
-                Title = "Erreur",
-                Content = "Veuillez entrer un nombre valide",
-                Duration = 3,
-            })
-        end
-    end,
-})
-
--- Dropdown pour les suffixes
-local SuffixDropdown = MainTab:CreateDropdown({
-    Name = "Suffixe (multiplicateur)",
-    Options = {"Aucun (x1)", "K (x1,000)", "M (x1,000,000)", "B (x1,000,000,000)", "T (x1,000,000,000,000)", "Qa (x1,000,000,000,000,000)", "Qi (x1,000,000,000,000,000,000)"},
-    CurrentOption = {"Aucun (x1)"},
-    MultipleOptions = false,
-    Flag = "SuffixDropdown",
-    Callback = function(Option)
-        local suffixes = {
-            ["Aucun (x1)"] = 1,
-            ["K (x1,000)"] = 1e3,
-            ["M (x1,000,000)"] = 1e6,
-            ["B (x1,000,000,000)"] = 1e9,
-            ["T (x1,000,000,000,000)"] = 1e12,
-            ["Qa (x1,000,000,000,000,000)"] = 1e15,
-            ["Qi (x1,000,000,000,000,000,000)"] = 1e18
-        }
-        
-        CustomPriceSuffix = suffixes[Option] or 1
-        UpdateMinimumPrice()
-        
-        Rayfield:Notify({
-            Title = "Prix minimum mis à jour",
-            Content = "Nouveau prix: $" .. tostring(PrixMinimum),
-            Duration = 3,
-        })
-    end,
-})
-
--- Dropdown pour prix prédéfinis
-local PriceDropdown = MainTab:CreateDropdown({
-    Name = "Prix minimum rapide",
-    Options = {"Aucun", "$1M", "$10M", "$50M", "$100M", "$500M", "$1B", "$10B", "$50B", "$100B", "$500B", "$1T", "$10T", "$50T", "$100T", "$500T", "$1Qa", "$10Qa", "$50Qa", "$100Qa", "$500Qa", "$1Qi"},
-    CurrentOption = {"Aucun"},
-    MultipleOptions = false,
-    Flag = "PriceDropdown",
-    Callback = function(Option)
-        for _, priceOption in ipairs(PriceOptions) do
-            if priceOption.text == Option then
-                PrixMinimum = priceOption.value
-                Rayfield:Notify({
-                    Title = "Prix minimum défini",
-                    Content = Option,
-                    Duration = 3,
-                })
-                break
-            end
-        end
-    end,
-})
-
--- Onglet Raretés
-local RarityTab = Window:CreateTab("✨ Raretés", nil)
-local RaritySection = RarityTab:CreateSection("Sélection des raretés à acheter")
-
--- Créer un toggle pour chaque rareté
-for _, rarity in ipairs(RarityOrder) do
-    RarityTab:CreateToggle({
-        Name = rarity,
-        CurrentValue = RarityConfig[rarity],
-        Flag = "Rarity_" .. rarity,
-        Callback = function(Value)
-            RarityConfig[rarity] = Value
-            print("Rareté " .. rarity .. ":", Value and "activée" or "désactivée")
-        end,
+-- Création de l'interface SIMPLIFIÉE
+local function CreerInterface()
+    local gui = CreateElement("ScreenGui", {
+        Name = "AutoBuyEggGUI",
+        ResetOnSpawn = false,
+        Parent = joueur:WaitForChild("PlayerGui")
     })
+    
+    -- Frame principale
+    local main = CreateElement("Frame", {
+        Size = UDim2.new(0, 380, 0, 520),
+        Position = UDim2.new(0.5, -190, 0.5, -260),
+        BackgroundColor3 = Color3.fromRGB(25, 25, 30),
+        BorderSizePixel = 0,
+        Parent = gui
+    })
+    AddCorner(main, 12)
+    
+    -- Titre
+    local title = CreateElement("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 45),
+        BackgroundColor3 = Color3.fromRGB(35, 35, 40),
+        Text = "🥚 Auto Buy Egg",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 20,
+        Font = Enum.Font.GothamBold,
+        Parent = main
+    })
+    AddCorner(title, 12)
+    
+    -- Bouton Start/Stop
+    local toggleBtn = CreateElement("TextButton", {
+        Size = UDim2.new(1, -30, 0, 40),
+        Position = UDim2.new(0, 15, 0, 60),
+        BackgroundColor3 = Color3.fromRGB(40, 180, 40),
+        Text = "▶ DEMARRER",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 15,
+        Font = Enum.Font.GothamBold,
+        Parent = main
+    })
+    AddCorner(toggleBtn, 8)
+    
+    -- Label prix minimum
+    CreateElement("TextLabel", {
+        Size = UDim2.new(1, -30, 0, 20),
+        Position = UDim2.new(0, 15, 0, 110),
+        BackgroundTransparency = 1,
+        Text = "Prix minimum :",
+        TextColor3 = Color3.fromRGB(200, 200, 200),
+        TextSize = 13,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = main
+    })
+    
+    -- Container pour prix custom
+    local customPriceFrame = CreateElement("Frame", {
+        Size = UDim2.new(1, -30, 0, 35),
+        Position = UDim2.new(0, 15, 0, 133),
+        BackgroundTransparency = 1,
+        Parent = main
+    })
+    
+    -- Champ de texte pour le nombre
+    local priceInput = CreateElement("TextBox", {
+        Size = UDim2.new(0, 180, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
+        BackgroundColor3 = Color3.fromRGB(40, 40, 45),
+        PlaceholderText = "Entrer un nombre...",
+        PlaceholderColor3 = Color3.fromRGB(120, 120, 120),
+        Text = "",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 13,
+        Font = Enum.Font.Gotham,
+        ClearTextOnFocus = false,
+        Parent = customPriceFrame
+    })
+    AddCorner(priceInput, 6)
+    
+    -- Dropdown pour le suffixe
+    local suffixBtn = CreateElement("TextButton", {
+        Size = UDim2.new(0, 165, 1, 0),
+        Position = UDim2.new(1, -165, 0, 0),
+        BackgroundColor3 = Color3.fromRGB(40, 40, 45),
+        Text = "Aucun ▼",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 13,
+        Font = Enum.Font.Gotham,
+        Parent = customPriceFrame
+    })
+    AddCorner(suffixBtn, 6)
+    
+    -- Liste des suffixes
+    local suffixes = {
+        {text = "Aucun", value = 1},
+        {text = "K (mille)", value = 1e3},
+        {text = "M (million)", value = 1e6},
+        {text = "B (milliard)", value = 1e9},
+        {text = "T (trillion)", value = 1e12},
+        {text = "Qa (quadrillion)", value = 1e15},
+        {text = "Qi (quintillion)", value = 1e18}
+    }
+    local selectedSuffix = 1
+    
+    -- Menu dropdown suffixes (caché par défaut)
+    local suffixMenu = CreateElement("Frame", {
+        Size = UDim2.new(0, 165, 0, 150),
+        Position = UDim2.new(1, -165, 0, 35),
+        BackgroundColor3 = Color3.fromRGB(35, 35, 40),
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 10,
+        Parent = customPriceFrame
+    })
+    AddCorner(suffixMenu, 6)
+    
+    local suffixScroll = CreateElement("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 6,
+        ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110),
+        CanvasSize = UDim2.new(0, 0, 0, #suffixes * 32),
+        ZIndex = 11,
+        Parent = suffixMenu
+    })
+    
+    -- Créer les options de suffixes
+    for i, suffix in ipairs(suffixes) do
+        local suffixOption = CreateElement("TextButton", {
+            Size = UDim2.new(1, -10, 0, 28),
+            Position = UDim2.new(0, 5, 0, (i-1) * 32),
+            BackgroundColor3 = Color3.fromRGB(45, 45, 50),
+            Text = suffix.text,
+            TextColor3 = Color3.new(1, 1, 1),
+            TextSize = 13,
+            Font = Enum.Font.Gotham,
+            ZIndex = 12,
+            Parent = suffixScroll
+        })
+        AddCorner(suffixOption, 4)
+        
+        suffixOption.MouseButton1Click:Connect(function()
+            selectedSuffix = suffix.value
+            suffixBtn.Text = suffix.text:match("^[^%(]+") .. "▼"
+            suffixMenu.Visible = false
+            
+            -- Mettre à jour le prix minimum
+            local inputNumber = tonumber(priceInput.Text)
+            if inputNumber then
+                PrixMinimum = inputNumber * selectedSuffix
+            end
+        end)
+    end
+    
+    suffixBtn.MouseButton1Click:Connect(function()
+        suffixMenu.Visible = not suffixMenu.Visible
+    end)
+    
+    -- Mettre à jour le prix quand l'utilisateur tape
+    priceInput:GetPropertyChangedSignal("Text"):Connect(function()
+        local text = priceInput.Text
+        -- Ne garder que les chiffres et le point décimal
+        text = text:gsub("[^%d%.]", "")
+        priceInput.Text = text
+        
+        local inputNumber = tonumber(text)
+        if inputNumber then
+            PrixMinimum = inputNumber * selectedSuffix
+        else
+            PrixMinimum = 0
+        end
+    end)
+    
+    -- Ou label séparateur
+    CreateElement("TextLabel", {
+        Size = UDim2.new(1, -30, 0, 20),
+        Position = UDim2.new(0, 15, 0, 178),
+        BackgroundTransparency = 1,
+        Text = "─── ou choisir un montant rapide ───",
+        TextColor3 = Color3.fromRGB(100, 100, 100),
+        TextSize = 11,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        Parent = main
+    })
+    
+    -- Dropdown prix prédéfinis
+    local dropdownBtn = CreateElement("TextButton", {
+        Size = UDim2.new(1, -30, 0, 35),
+        Position = UDim2.new(0, 15, 0, 203),
+        BackgroundColor3 = Color3.fromRGB(40, 40, 45),
+        Text = "Sélectionner... ▼",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 13,
+        Font = Enum.Font.Gotham,
+        Parent = main
+    })
+    AddCorner(dropdownBtn, 6)
+    
+    -- Menu dropdown (caché par défaut)
+    local dropdownMenu = CreateElement("Frame", {
+        Size = UDim2.new(1, -30, 0, 150),
+        Position = UDim2.new(0, 15, 0, 240),
+        BackgroundColor3 = Color3.fromRGB(35, 35, 40),
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 10,
+        Parent = main
+    })
+    AddCorner(dropdownMenu, 6)
+    
+    local dropdownScroll = CreateElement("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 6,
+        ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110),
+        CanvasSize = UDim2.new(0, 0, 0, #PriceOptions * 32),
+        ZIndex = 11,
+        Parent = dropdownMenu
+    })
+    
+    -- Créer les options du dropdown
+    for i, option in ipairs(PriceOptions) do
+        local optionBtn = CreateElement("TextButton", {
+            Size = UDim2.new(1, -10, 0, 28),
+            Position = UDim2.new(0, 5, 0, (i-1) * 32),
+            BackgroundColor3 = Color3.fromRGB(45, 45, 50),
+            Text = option.text,
+            TextColor3 = Color3.new(1, 1, 1),
+            TextSize = 13,
+            Font = Enum.Font.Gotham,
+            ZIndex = 12,
+            Parent = dropdownScroll
+        })
+        AddCorner(optionBtn, 4)
+        
+        optionBtn.MouseButton1Click:Connect(function()
+            PrixMinimum = option.value
+            dropdownBtn.Text = option.text .. " ▼"
+            dropdownMenu.Visible = false
+            -- Réinitialiser le champ custom
+            priceInput.Text = ""
+            suffixBtn.Text = "Aucun ▼"
+            selectedSuffix = 1
+            print("💰 Prix minimum défini:", option.text)
+        end)
+    end
+    
+    dropdownBtn.MouseButton1Click:Connect(function()
+        dropdownMenu.Visible = not dropdownMenu.Visible
+    end)
+    
+    -- Label raretés
+    CreateElement("TextLabel", {
+        Size = UDim2.new(1, -30, 0, 20),
+        Position = UDim2.new(0, 15, 0, 248),
+        BackgroundTransparency = 1,
+        Text = "Raretés à acheter :",
+        TextColor3 = Color3.fromRGB(200, 200, 200),
+        TextSize = 13,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = main
+    })
+    
+    -- Scroll frame pour raretés
+    local scroll = CreateElement("ScrollingFrame", {
+        Size = UDim2.new(1, -30, 0, 170),
+        Position = UDim2.new(0, 15, 0, 273),
+        BackgroundColor3 = Color3.fromRGB(35, 35, 40),
+        BorderSizePixel = 0,
+        ScrollBarThickness = 4,
+        Parent = main
+    })
+    AddCorner(scroll, 6)
+    
+    local buttons = {}
+    local yPos = 0
+    
+    for _, rarity in ipairs(RarityOrder) do
+        local frame = CreateElement("Frame", {
+            Size = UDim2.new(1, -10, 0, 35),
+            Position = UDim2.new(0, 5, 0, yPos),
+            BackgroundColor3 = Color3.fromRGB(45, 45, 50),
+            Parent = scroll
+        })
+        AddCorner(frame, 6)
+        
+        local checkbox = CreateElement("TextButton", {
+            Size = UDim2.new(0, 25, 0, 25),
+            Position = UDim2.new(0, 5, 0.5, -12.5),
+            BackgroundColor3 = RarityConfig[rarity] and RarityColors[rarity] or Color3.fromRGB(60, 60, 65),
+            Text = RarityConfig[rarity] and "✓" or "",
+            TextColor3 = Color3.new(1, 1, 1),
+            TextSize = 16,
+            Font = Enum.Font.GothamBold,
+            Parent = frame
+        })
+        AddCorner(checkbox, 4)
+        
+        CreateElement("TextLabel", {
+            Size = UDim2.new(1, -40, 1, 0),
+            Position = UDim2.new(0, 35, 0, 0),
+            BackgroundTransparency = 1,
+            Text = rarity,
+            TextColor3 = RarityColors[rarity],
+            TextSize = 13,
+            Font = Enum.Font.GothamBold,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = frame
+        })
+        
+        buttons[rarity] = checkbox
+        
+        checkbox.MouseButton1Click:Connect(function()
+            RarityConfig[rarity] = not RarityConfig[rarity]
+            checkbox.BackgroundColor3 = RarityConfig[rarity] and RarityColors[rarity] or Color3.fromRGB(60, 60, 65)
+            checkbox.Text = RarityConfig[rarity] and "✓" or ""
+        end)
+        
+        yPos = yPos + 40
+    end
+    
+    scroll.CanvasSize = UDim2.new(0, 0, 0, yPos)
+    
+    -- Bouton fermer
+    local closeBtn = CreateElement("TextButton", {
+        Size = UDim2.new(1, -30, 0, 35),
+        Position = UDim2.new(0, 15, 1, -45),
+        BackgroundColor3 = Color3.fromRGB(180, 40, 40),
+        Text = "✕ FERMER",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 13,
+        Font = Enum.Font.GothamBold,
+        Parent = main
+    })
+    AddCorner(closeBtn, 8)
+    
+    -- Système de drag
+    local dragging, dragInput, mousePos, framePos
+    local dragging, dragInput, mousePos, framePos
+    title.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            mousePos = input.Position
+            framePos = main.Position
+        end
+    end)
+    
+    title.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+            local delta = input.Position - mousePos
+            main.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+        end
+    end)
+    
+    return gui, toggleBtn, buttons, closeBtn
 end
 
--- Onglet Statistiques
-local StatsTab = Window:CreateTab("📊 Statistiques", nil)
-local StatsSection = StatsTab:CreateSection("Informations")
+local GUI, ToggleBtn, RarityButtons, CloseBtn = CreerInterface()
 
-local StatsLabel = StatsTab:CreateLabel("En attente de données...")
+-- Fermer l'interface
+CloseBtn.MouseButton1Click:Connect(function()
+    ScriptActif = false
+    GUI:Destroy()
+end)
 
--- Mettre à jour les stats périodiquement
-task.spawn(function()
-    while true do
-        wait(2)
-        if ScriptActif then
-            local oeufs = GetTousLesOeufs()
-            StatsLabel:Set("Œufs disponibles: " .. #oeufs .. " | Prix min: $" .. tostring(PrixMinimum))
-        end
+-- Toggle du script
+ToggleBtn.MouseButton1Click:Connect(function()
+    ScriptActif = not ScriptActif
+    if ScriptActif then
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+        ToggleBtn.Text = "⏸ ARRETER"
+    else
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+        ToggleBtn.Text = "▶ DEMARRER"
     end
 end)
 
--------- Logique d'achat (identique à l'original)
+-------- Logique (identique à l'original)
 
 local function GetTousLesOeufs()
     wait(0.1)
@@ -356,8 +594,10 @@ local function AutoBuyEgg()
             
             for _, oeuf in ipairs(oeufs) do
                 if EstRareteRecherchee(oeuf.rarete) then
+                    
                     if EstPrixSuffisant(oeuf.prixNombre) then
                         table.insert(oeufsRaresATrouves, oeuf)
+                    else
                     end
                 end
             end
@@ -380,7 +620,4 @@ local function AutoBuyEgg()
     end
 end
 
--- Démarrer le script d'achat automatique
-task.spawn(AutoBuyEgg)
-
-Rayfield:LoadConfiguration()
+AutoBuyEgg()
