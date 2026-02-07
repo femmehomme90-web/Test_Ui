@@ -78,7 +78,17 @@ local function ConvertirPrixEnNombre(prixTexte)
     -- Enlever le symbole $ et les espaces
     prixTexte = prixTexte:gsub("%$", ""):gsub("%s+", "")
     
-    -- Dictionnaire des suffixes
+    -- Vérifier si c'est un format avec virgules (ex: 2,500,000)
+    if prixTexte:match("^[%d,]+$") then
+        -- Enlever toutes les virgules et convertir directement
+        local nombre = tonumber(prixTexte:gsub(",", ""))
+        if nombre then
+            print("✅ Converti (format virgule):", prixTexte, "→", nombre)
+            return nombre
+        end
+    end
+    
+    -- Sinon, format avec suffixe (ex: 2.5M, 100K)
     local suffixes = {
         ["K"] = 1e3,
         ["M"] = 1e6,
@@ -102,7 +112,7 @@ local function ConvertirPrixEnNombre(prixTexte)
         resultat = nombre * suffixes[suffixe]
     end
     
-    print("✅ Converti:", prixTexte, "→", resultat)
+    print("✅ Converti (format suffixe):", prixTexte, "→", resultat)
     return resultat
 end
 
